@@ -225,7 +225,6 @@ class GazetteDownloadSpider(scrapy.Spider):
             self.progress_bar.refresh()
             
             
-            
             for btn in pdf_buttons:
                 
                 full_lang_text = btn.css("button::text").get(default="unknown").strip().lower()
@@ -291,7 +290,7 @@ class GazetteDownloadSpider(scrapy.Spider):
                 f.write(response.body)
             
             file_size = len(response.body)
-            self.logger.info(f"[SAVED] Gazette {gazette_id} {date} ({lang}) – {file_size} bytes \n")
+            
             
             # Log successful download
             self.log_archived_file(gazette_id, date, lang, description, path, file_size, "SUCCESS")
@@ -303,6 +302,7 @@ class GazetteDownloadSpider(scrapy.Spider):
             # Update progress
             self.completed_downloads += 1
             self.update_progress_bar(f"Downloaded: {gazette_id} ({lang})")
+            self.logger.info(f"[SAVED] Gazette {date} {gazette_id} ({lang}) – {file_size} bytes \n")
             
         except Exception as e:
             self.logger.error(f"[ERROR] Failed to save Gazette {date} {gazette_id}  ({lang}): {e}")

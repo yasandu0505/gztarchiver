@@ -1,8 +1,36 @@
-# A test code to get familiar with Scrapy
+# Open G-Tracer
 
-### Function >>>>>>>>>>>>>>>>>>>>>>
+### A library which can extract and downloads pdfs' from specific websites.
 
-Extracting all the years from Extra Gazette and their links from "https://documents.gov.lk" and store in a json file.
+## Clone the project
 
-#### Thank You!
+```bash
+git clone https://github.com/yasandu0505/test-scraper.git
+```
+
+## Run the commands -> In the project root (replace **python3** with your version)
+
+```Help
+python3 run_download.py --h  
+```
+
+```To extract all the data with all the languages
+python3 run_download.py
+```
+
+```To extract data for specific year with all the languages
+python3 run_download.py --year {year}
+```
+
+```To extract data for specific year with specific language
+python3 run_download.py --year {year} --lang {language}
+```
+
+```To enable/disable scrapy logs (y = yes , n = no)
+python3 run_download.py --c_logs y
+```
+
+---
+### Under development -----------------------------------------------------------
+### Thank You !
 
