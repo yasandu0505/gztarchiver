@@ -1,15 +1,15 @@
-# G-Tracer
+# 🥽 Open G-Tracer
 
 A library for extracting and downloading PDFs from specific websites.
 
-## Installation
+## 🛠️ Installation
 
 ```bash
 git clone https://github.com/yasandu0505/test-scraper.git
 cd test-scraper
 ```
 
-## Usage
+## 🕹️ Usage
 
 **Show help:**
 ```bash
@@ -37,7 +37,7 @@ python3 run_download.py --c_logs y    # Enable logs
 python3 run_download.py --c_logs n    # Disable logs
 ```
 
-## Options
+## 🎛️ Options
 
 | Option | Description | Example |
 |--------|-------------|---------|
@@ -45,10 +45,10 @@ python3 run_download.py --c_logs n    # Disable logs
 | `--lang` | Specify language | `--lang en` |
 | `--c_logs` | Enable/disable logs (y/n) | `--c_logs y` |
 
-## Status
+## 📟 Status
 
 🚧 Under Development
-Only works for document.gov.lk
+
 ---
 
 **Thank you for using G-Tracer!**
