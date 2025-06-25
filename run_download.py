@@ -3,6 +3,8 @@ import argparse
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from gazette_tracker.spiders.gazette_download import GazetteDownloadSpider
+from scrapy.utils.log import configure_logging
+import logging
 
 # CLI arguments
 parser = argparse.ArgumentParser(description="Download gazettes by year and language.")
@@ -13,6 +15,16 @@ args = parser.parse_args()
 # Load year->link mapping from JSON
 with open("years.json", "r", encoding="utf-8") as f:
     year_data = json.load(f)
+    
+# Disable Scrapy's default logging
+configure_logging({
+    'LOG_LEVEL': 'CRITICAL',  # Only critical errors (none in typical use)
+    'LOG_FORMAT': '%(levelname)s: %(message)s',
+    'LOG_STDOUT': False
+})
+
+# Optionally disable root logger handlers entirely
+logging.getLogger('scrapy').propagate = False
 
 process = CrawlerProcess(get_project_settings())
 
