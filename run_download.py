@@ -9,7 +9,7 @@ import logging
 # CLI arguments
 parser = argparse.ArgumentParser(description="Download gazettes by year and language.")
 parser.add_argument("--year", default="all", help="Year to download (e.g., 2023 or 'all'). Default is 'all'.")
-parser.add_argument("--lang", default="all", help="Language: english, sinhala, tamil, or all. Default is 'all'.")
+parser.add_argument("--lang", default="all", help="Language: en (English), si (Sinhala), ta (Tamil), or all. Default is 'all'.")
 parser.add_argument("--c_logs", default="N", help="Enable Scrapy logs (Y/N). Default is N.")
 args = parser.parse_args()
 

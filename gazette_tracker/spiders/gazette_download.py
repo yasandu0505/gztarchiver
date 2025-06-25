@@ -19,6 +19,14 @@ class GazetteDownloadSpider(scrapy.Spider):
 
     def __init__(self, year=None, year_url=None, lang="all", *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        self.lang_map = {
+            "english": "en",
+            "sinhala": "si",
+            "tamil": "ta"
+        }
+
+        
         self.year = year
         self.lang = lang.lower()
         
@@ -34,6 +42,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         self.base_dir = str(Path.home() / "Desktop/gazette-archive")
 
     def parse(self, response):
+        
         rows = response.css("table tbody tr")
 
         for row in rows:
@@ -56,12 +65,19 @@ class GazetteDownloadSpider(scrapy.Spider):
                 continue
 
             for btn in pdf_buttons:
-                lang_text = btn.css("button::text").get(default="unknown").strip().lower()
-                if self.lang != "all" and self.lang != lang_text:
+                
+                full_lang_text = btn.css("button::text").get(default="unknown").strip().lower()
+                short_code = self.lang_map.get(full_lang_text)
+                
+                if not short_code:
+                    self.logger.warning(f"[UNKNOWN LANGUAGE] {full_lang_text} – Skipping.")
+                    continue
+                
+                if self.lang != "all" and self.lang != short_code:
                     continue  # skip other languages
 
                 pdf_url = urljoin(response.url, btn.attrib["href"])
-                file_path = os.path.join(gazette_folder, f"{gazette_id}_{lang_text}.pdf")
+                file_path = os.path.join(gazette_folder, f"{gazette_id}_{full_lang_text}.pdf")
 
                 yield scrapy.Request(
                     url=pdf_url,
@@ -69,7 +85,7 @@ class GazetteDownloadSpider(scrapy.Spider):
                     meta={
                         "file_path": file_path,
                         "gazette_id": gazette_id,
-                        "lang": lang_text
+                        "lang": full_lang_text
                     },
                     errback=self.download_failed,
                     dont_filter=True
