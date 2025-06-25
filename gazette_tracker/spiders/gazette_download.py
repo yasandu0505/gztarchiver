@@ -3,7 +3,7 @@ import scrapy
 from urllib.parse import urljoin
 from pathlib import Path
 import json
-
+from datetime import datetime
 
 class GazetteDownloadSpider(scrapy.Spider):
     name = "gazette_download"
@@ -15,8 +15,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         "LOG_FORMAT": "%(levelname)s: %(message)s",  # Cleaner log output
         "LOG_STDOUT": True,  # Capture print statements if used
     }
-
-
+    
     def __init__(self, year=None, year_url=None, lang="all", *args, **kwargs):
         super().__init__(*args, **kwargs)
         
@@ -25,7 +24,6 @@ class GazetteDownloadSpider(scrapy.Spider):
             "sinhala": "si",
             "tamil": "ta"
         }
-
         
         self.year = year
         self.lang = lang.lower()
@@ -41,6 +39,27 @@ class GazetteDownloadSpider(scrapy.Spider):
         
         self.base_dir = str(Path.home() / "Desktop/gazette-archive")
 
+    def parse_date(self, date_str):
+        """Parse date string and return year, month, day components"""
+        try:
+            date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+            return date_obj.year, date_obj.month, date_obj.day
+        except ValueError:
+            try:
+                # Try alternative format like DD/MM/YYYY
+                date_obj = datetime.strptime(date_str, "%d/%m/%Y")
+                return date_obj.year, date_obj.month, date_obj.day
+            except ValueError:
+                try:
+                    # Try another format like DD-MM-YYYY
+                    date_obj = datetime.strptime(date_str, "%d-%m-%Y")
+                    return date_obj.year, date_obj.month, date_obj.day
+                except ValueError:
+                    # If all parsing fails, use current date components as fallback
+                    self.logger.warning(f"Could not parse date: {date_str}, using current date")
+                    now = datetime.now()
+                    return now.year, now.month, now.day
+
     def parse(self, response):
         
         rows = response.css("table tbody tr")
@@ -50,10 +69,16 @@ class GazetteDownloadSpider(scrapy.Spider):
             date = row.css("td:nth-child(2)::text").get(default="").strip()
             desc = row.css("td:nth-child(3)::text").get(default="").strip()
 
-            # Directory setup
-            year_folder = os.path.join(self.base_dir, self.year)
-            folder_name = f"{date}_{gazette_id}"
-            gazette_folder = os.path.join(year_folder, folder_name)
+            # Parse the date to get year, month, day
+            year, month, day = self.parse_date(date)
+            
+            # Create the new directory structure: year -> month -> date -> gazette_id
+            year_folder = os.path.join(self.base_dir, str(year))
+            month_folder = os.path.join(year_folder, f"{month:02d}")  # Zero-padded month
+            date_folder = os.path.join(month_folder, f"{day:02d}")    # Zero-padded day
+            gazette_folder = os.path.join(date_folder, gazette_id)
+            
+            # Create all directories in the hierarchy
             os.makedirs(gazette_folder, exist_ok=True)
 
             # Check if there are any <a> tags in the 4th <td>
@@ -61,7 +86,7 @@ class GazetteDownloadSpider(scrapy.Spider):
             pdf_buttons = download_cell.css("a")
 
             if not pdf_buttons:
-                self.logger.info(f"[EMPTY] {gazette_id} – No download links, only created folder. \n")
+                self.logger.info(f"[EMPTY] {date} {gazette_id} – No download links, only created folder. \n")
                 continue
 
             for btn in pdf_buttons:
@@ -85,7 +110,8 @@ class GazetteDownloadSpider(scrapy.Spider):
                     meta={
                         "file_path": file_path,
                         "gazette_id": gazette_id,
-                        "lang": full_lang_text
+                        "lang": full_lang_text,
+                        "date": date
                     },
                     errback=self.download_failed,
                     dont_filter=True
@@ -95,7 +121,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         path = response.meta["file_path"]
         with open(path, "wb") as f:
             f.write(response.body)
-        self.logger.info(f"[SAVED] Gazette {response.meta['gazette_id']} ({response.meta['lang']}) \n")
+        self.logger.info(f"[SAVED] Gazette {response.meta['date']} {response.meta['gazette_id']} ({response.meta['lang']}) \n")
 
     def download_failed(self, failure):
         request = failure.request
