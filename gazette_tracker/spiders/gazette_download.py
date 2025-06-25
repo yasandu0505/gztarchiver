@@ -2,6 +2,7 @@ import os
 import scrapy
 from urllib.parse import urljoin
 from pathlib import Path
+import json
 
 
 class GazetteDownloadSpider(scrapy.Spider):
@@ -20,8 +21,16 @@ class GazetteDownloadSpider(scrapy.Spider):
         super().__init__(*args, **kwargs)
         self.year = year
         self.lang = lang.lower()
-        if year_url:
-            self.start_urls = [year_url]
+        
+        with open("years.json", "r", encoding="utf-8") as f:
+            data = json.load(f)
+            year_entry = next((item for item in data if item["year"] == year), None)
+
+        if year_entry:
+            self.start_urls = [year_entry["link"]]
+        else:
+            raise ValueError(f"Year '{year}' not found in years.json.")
+        
         self.base_dir = str(Path.home() / "Desktop/gazette-archive")
 
     def parse(self, response):
