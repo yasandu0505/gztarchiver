@@ -1,36 +1,54 @@
-# Open G-Tracer
+# G-Tracer
 
-### A library which can extract and downloads pdfs' from specific websites.
+A library for extracting and downloading PDFs from specific websites.
 
-## Clone the project
+## Installation
 
 ```bash
 git clone https://github.com/yasandu0505/test-scraper.git
+cd test-scraper
 ```
 
-## Run the commands -> In the project root (replace **python3** with your version)
+## Usage
 
-```Help
-python3 run_download.py --h  
+**Show help:**
+```bash
+python3 run_download.py --help
 ```
 
-```To extract all the data with all the languages
+**Extract all data:**
+```bash
 python3 run_download.py
 ```
 
-```To extract data for specific year with all the languages
-python3 run_download.py --year {year}
+**Extract data for specific year:**
+```bash
+python3 run_download.py --year 2023
 ```
 
-```To extract data for specific year with specific language
-python3 run_download.py --year {year} --lang {language}
+**Extract data for specific year and language:**
+```bash
+python3 run_download.py --year 2023 --lang english
 ```
 
-```To enable/disable scrapy logs (y = yes , n = no)
-python3 run_download.py --c_logs y
+**Enable/disable logs:**
+```bash
+python3 run_download.py --c_logs y    # Enable logs
+python3 run_download.py --c_logs n    # Disable logs
 ```
+
+## Options
+
+| Option | Description | Example |
+|--------|-------------|---------|
+| `--year` | Filter by year | `--year 2023` |
+| `--lang` | Specify language | `--lang english` |
+| `--c_logs` | Enable/disable logs (y/n) | `--c_logs y` |
+
+## Status
+
+🚧 Under Development
 
 ---
-### Under development -----------------------------------------------------------
-### Thank You !
 
+**Thank you for using G-Tracer!**
