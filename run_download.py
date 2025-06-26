@@ -26,14 +26,92 @@ if args.c_logs.upper() != "Y":
     logging.getLogger('scrapy').propagate = False
 
 # Load year -> URL mapping
-with open("years.json", "r", encoding="utf-8") as f:
-    year_data = json.load(f)
+try:
+    with open("years.json", "r", encoding="utf-8") as f:
+        year_data = json.load(f)
+except FileNotFoundError:
+    print("\n❌ Error: years.json file not found.")
+    sys.exit(1)
+except json.JSONDecodeError:
+    print("\n❌ Error: Invalid JSON format in years.json.")
+    sys.exit(1)
 
 process = CrawlerProcess(get_project_settings())
 
 # Helper: fetch year entry from years.json
 def get_year_entry(year):
     return next((item for item in year_data if item["year"] == year), None)
+
+# Validate month and day inputs
+def validate_date_inputs():
+    if args.month:
+        try:
+            month_int = int(args.month)
+            if month_int < 1 or month_int > 12:
+                print(f"\n❌ Invalid month '{args.month}'. Must be between 01-12.")
+                sys.exit(1)
+            # Ensure month is zero-padded
+            args.month = f"{month_int:02d}"
+        except ValueError:
+            print(f"\n❌ Invalid month format '{args.month}'. Use format: 01, 02, ..., 12.")
+            sys.exit(1)
+    
+    if args.day:
+        try:
+            day_int = int(args.day)
+            if day_int < 1 or day_int > 31:
+                print(f"\n❌ Invalid day '{args.day}'. Must be between 01-31.")
+                sys.exit(1)
+            # Ensure day is zero-padded
+            args.day = f"{day_int:02d}"
+        except ValueError:
+            print(f"\n❌ Invalid day format '{args.day}'. Use format: 01, 02, ..., 31.")
+            sys.exit(1)
+
+# Custom spider class that checks if any gazettes were found
+class GazetteDownloadSpiderWithValidation(GazetteDownloadSpider):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.found_matching_gazettes = False
+        
+    def parse(self, response):
+        # First, check if any gazettes match our filters
+        rows = response.css("table tbody tr")
+        matching_count = 0
+        
+        for row in rows:
+            date = row.css("td:nth-child(2)::text").get(default="").strip()
+            
+            # Check if this gazette matches our date filter
+            if self.matches_date_filter(date):
+                matching_count += 1
+                break  # We found at least one match
+        
+        if matching_count == 0:
+            # No matching gazettes found
+            filter_desc = []
+            if self.month:
+                filter_desc.append(f"month {self.month}")
+            if self.day:
+                filter_desc.append(f"day {self.day}")
+            
+            filter_text = " and ".join(filter_desc) if filter_desc else "specified filters"
+            print(f"\n❌ No gazettes found for year {self.year} with {filter_text}")
+            
+            # Log the finding
+            if hasattr(self, 'file_logger'):
+                self.file_logger.info(f"No gazettes found matching filters - Year: {self.year}, Month: {self.month}, Day: {self.day}")
+            
+            return  # Stop processing
+        
+        # If we reach here, we found matching gazettes
+        self.found_matching_gazettes = True
+        
+        # Continue with normal processing
+        yield from super().parse(response)
+
+# Validate inputs
+validate_date_inputs()
 
 # Exact date mode (year + month + day)
 if args.year.lower() != "all" and args.month and args.day:
@@ -44,12 +122,28 @@ if args.year.lower() != "all" and args.month and args.day:
 
     print(f"\n📅 Starting download for {args.year}-{args.month}-{args.day}...")
     process.crawl(
-        GazetteDownloadSpider,
+        GazetteDownloadSpiderWithValidation,
         year=args.year,
         year_url=year_entry["link"],
         lang=args.lang,
         month=args.month,
         day=args.day
+    )
+
+# Year + Month mode (NEW: handles month-only filtering)
+elif args.year.lower() != "all" and args.month and not args.day:
+    year_entry = get_year_entry(args.year)
+    if not year_entry:
+        print(f"\n❌ Year '{args.year}' not found in years.json.")
+        sys.exit(1)
+
+    print(f"\n📅 Starting download for {args.year}-{args.month} (entire month)...")
+    process.crawl(
+        GazetteDownloadSpiderWithValidation,
+        year=args.year,
+        year_url=year_entry["link"],
+        lang=args.lang,
+        month=args.month
     )
 
 # Year-only mode
@@ -59,18 +153,33 @@ elif args.year.lower() != "all":
         print(f"\n❌ Year '{args.year}' not found in years.json.")
         sys.exit(1)
 
-    print(f"\n🔄 Starting download for year {args.year}...")
-    process.crawl(
-        GazetteDownloadSpider,
-        year=args.year,
-        year_url=year_entry["link"],
-        lang=args.lang
-    )
+    if args.month:
+        print(f"\n📅 Starting download for {args.year}-{args.month} (entire month)...")
+        process.crawl(
+            GazetteDownloadSpiderWithValidation,
+            year=args.year,
+            year_url=year_entry["link"],
+            lang=args.lang,
+            month=args.month
+        )
+    else:
+        print(f"\n🔄 Starting download for year {args.year}...")
+        process.crawl(
+            GazetteDownloadSpider,
+            year=args.year,
+            year_url=year_entry["link"],
+            lang=args.lang
+        )
 
 # All-years mode
 else:
+    if args.month or args.day:
+        print(f"\n❌ Cannot use month/day filters with --year all. Please specify a specific year.")
+        sys.exit(1)
+        
+    print(f"\n🔄 Starting download for all available years...")
     for entry in year_data:
-        print(f"\n🔄 Starting download for year {entry['year']}...")
+        print(f"\n🔄 Processing year {entry['year']}...")
         process.crawl(
             GazetteDownloadSpider,
             year=entry["year"],
@@ -78,4 +187,11 @@ else:
             lang=args.lang
         )
 
-process.start()
+try:
+    process.start()
+except KeyboardInterrupt:
+    print(f"\n🛑 Download interrupted by user.")
+    sys.exit(0)
+except Exception as e:
+    print(f"\n❌ An error occurred: {e}")
+    sys.exit(1)

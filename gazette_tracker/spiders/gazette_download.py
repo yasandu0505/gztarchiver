@@ -627,7 +627,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         # Close progress bar
         if self.progress_bar:
             self.progress_bar.close()
-            
+        
         # Clear line and print final summary
         print("\n" + "=" * 60)
         print(f"🎯 DOWNLOAD SUMMARY for {self.year}")
