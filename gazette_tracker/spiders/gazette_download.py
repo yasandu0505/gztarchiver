@@ -29,7 +29,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         "WARN_ON_GENERATOR_RETURN_VALUE": False,
     }
     
-    def __init__(self, year=None, year_url=None, lang="all", *args, **kwargs):
+    def __init__(self, year=None, year_url=None, lang="all", month=None, day=None, *args, **kwargs):
         super().__init__(*args, **kwargs)
         
         # Initialize crawler and settings attributes to None - will be set by from_crawler
@@ -44,6 +44,11 @@ class GazetteDownloadSpider(scrapy.Spider):
         
         self.year = year
         self.lang = lang.lower()
+        # Convert month and day to integers for comparison, store as strings for formatting
+        self.month = int(month) if month else None
+        self.day = int(day) if day else None
+        self.month_str = month
+        self.day_str = day
         
         with open("years.json", "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -77,6 +82,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         self.completed_downloads = 0
         self.skipped_downloads = 0
         self.failed_downloads = 0
+        self.filtered_out_count = 0  # Track gazettes filtered out by date
         self.progress_bar = None
         
         # Track ongoing downloads for cleanup
@@ -305,7 +311,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         except ValueError:
             try:
                 # Try alternative format like DD/MM/YYYY
-                date_obj = datetime.strptime(date_str, "%d/%m/%Y")
+                date_obj = datetime.strptime(date_str, "%d/%m/%Y") 
                 return date_obj.year, date_obj.month, date_obj.day
             except ValueError:
                 try:
@@ -313,11 +319,38 @@ class GazetteDownloadSpider(scrapy.Spider):
                     date_obj = datetime.strptime(date_str, "%d-%m-%Y")
                     return date_obj.year, date_obj.month, date_obj.day
                 except ValueError:
-                    # If all parsing fails, use current date components as fallback
-                    if hasattr(self, 'file_logger'):
-                        self.file_logger.warning(f"Could not parse date: {date_str}, using current date")
-                    now = datetime.now()
-                    return now.year, now.month, now.day
+                    try:
+                        # Try YYYY/MM/DD format
+                        date_obj = datetime.strptime(date_str, "%Y/%m/%d")
+                        return date_obj.year, date_obj.month, date_obj.day
+                    except ValueError:
+                        # If all parsing fails, use current date components as fallback
+                        if hasattr(self, 'file_logger'):
+                            self.file_logger.warning(f"Could not parse date: {date_str}, using current date")
+                        now = datetime.now()
+                        return now.year, now.month, now.day
+
+    def matches_date_filter(self, date_str):
+        """Check if the gazette date matches the specified month/day filter"""
+        if not self.month and not self.day:
+            return True  # No date filter specified
+        
+        try:
+            year, month, day = self.parse_date(date_str)
+            
+            # Check month filter
+            if self.month and month != self.month:
+                return False
+                
+            # Check day filter
+            if self.day and day != self.day:
+                return False
+                
+            return True
+        except Exception as e:
+            if hasattr(self, 'file_logger'):
+                self.file_logger.warning(f"Error checking date filter for {date_str}: {e}")
+            return False  # If we can't parse the date, exclude it
 
     def parse(self, response):
         # Check if shutdown was requested
@@ -328,15 +361,33 @@ class GazetteDownloadSpider(scrapy.Spider):
         rows = response.css("table tbody tr")
         self.total_gazettes = len(rows)
         
-        # Count total downloads first (excluding already processed)
+        # Count total downloads first (excluding already processed and date filtered)
         print(f"🔍 Analyzing {self.total_gazettes} gazette entries...")
         potential_downloads = 0
         already_processed_count = 0
+        date_filtered_count = 0
+        
+        # Build filter description for user
+        filter_desc = []
+        if self.month:
+            filter_desc.append(f"month={self.month:02d}")
+        if self.day:
+            filter_desc.append(f"day={self.day:02d}")
+        if self.lang != "all":
+            filter_desc.append(f"language={self.lang}")
+        
+        filter_text = f" (filters: {', '.join(filter_desc)})" if filter_desc else ""
         
         for row in rows:
             gazette_id = row.css("td:nth-child(1)::text").get(default="").strip().replace("/", "-")
+            date = row.css("td:nth-child(2)::text").get(default="").strip()
             download_cell = row.css("td:nth-child(4)")
             pdf_buttons = download_cell.css("a")
+            
+            # Check date filter first
+            if not self.matches_date_filter(date):
+                date_filtered_count += 1
+                continue
             
             for btn in pdf_buttons:
                 full_lang_text = btn.css("button::text").get(default="unknown").strip().lower()
@@ -368,12 +419,16 @@ class GazetteDownloadSpider(scrapy.Spider):
             leave=True
         )
         
-        print(f"\n📊 Analysis complete:")
-        print(f"   • {potential_downloads} total files match your language filter")
+        print(f"\n📊 Analysis complete{filter_text}:")
+        print(f"   • {self.total_gazettes} total gazette entries found")
+        if date_filtered_count > 0:
+            print(f"   • {date_filtered_count} entries filtered out by date")
+        print(f"   • {potential_downloads} files match your filters")
         print(f"   • {already_processed_count} already processed (skipping)")
         print(f"   • {self.total_downloads} files to download")
         print(f"💡 Press Ctrl+C to gracefully stop after current downloads complete")
-        self.file_logger.info(f"Found {self.total_gazettes} gazette entries, {potential_downloads} potential downloads, {self.total_downloads} new downloads needed")
+        
+        self.file_logger.info(f"Found {self.total_gazettes} gazette entries, {date_filtered_count} filtered by date, {potential_downloads} potential downloads, {self.total_downloads} new downloads needed")
 
         for row in rows:
             # Check for shutdown request before processing each gazette
@@ -384,6 +439,12 @@ class GazetteDownloadSpider(scrapy.Spider):
             gazette_id = row.css("td:nth-child(1)::text").get(default="").strip().replace("/", "-")
             date = row.css("td:nth-child(2)::text").get(default="").strip()
             desc = row.css("td:nth-child(3)::text").get(default="").strip()
+
+            # Apply date filter
+            if not self.matches_date_filter(date):
+                self.filtered_out_count += 1
+                self.file_logger.debug(f"[FILTERED] {gazette_id} ({date}) – Does not match date filter")
+                continue
 
             # Parse the date to get year, month, day
             year, month, day = self.parse_date(date)
@@ -570,8 +631,17 @@ class GazetteDownloadSpider(scrapy.Spider):
         # Clear line and print final summary
         print("\n" + "=" * 60)
         print(f"🎯 DOWNLOAD SUMMARY for {self.year}")
+        if self.month or self.day:
+            date_filter = []
+            if self.month:
+                date_filter.append(f"Month: {self.month:02d}")
+            if self.day:
+                date_filter.append(f"Day: {self.day:02d}")
+            print(f"📅 Date Filter: {', '.join(date_filter)}")
         print("=" * 60)
         print(f"📊 Total gazette entries: {self.processed_gazettes}/{self.total_gazettes}")
+        if self.filtered_out_count > 0:
+            print(f"🔍 Filtered out by date: {self.filtered_out_count}")
         print(f"✅ Successfully downloaded: {self.completed_downloads} files")
         if self.skipped_downloads > 0:
             print(f"⏭️  Skipped (already archived): {self.skipped_downloads} files")
@@ -594,4 +664,4 @@ class GazetteDownloadSpider(scrapy.Spider):
         
         # Log summary to file as well
         self.file_logger.info(f"Spider closed. Reason: {reason}")
-        self.file_logger.info(f"SUMMARY - Processed: {self.processed_gazettes}, Downloaded: {self.completed_downloads}, Skipped: {self.skipped_downloads}, Failed: {self.failed_downloads}")
+        self.file_logger.info(f"SUMMARY - Processed: {self.processed_gazettes}, Downloaded: {self.completed_downloads}, Skipped: {self.skipped_downloads}, Failed: {self.failed_downloads}, Filtered: {self.filtered_out_count}")
