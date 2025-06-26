@@ -1,4 +1,4 @@
-# 🥽 Open G-Tracer
+# 🥽 Open Doc-Tracer
 
 A library for extracting and downloading PDFs from specific websites.
 
