@@ -6,6 +6,7 @@ import json
 import csv
 from datetime import datetime
 from tqdm import tqdm
+import logging
 
 class GazetteDownloadSpider(scrapy.Spider):
     name = "gazette_download"
@@ -13,9 +14,9 @@ class GazetteDownloadSpider(scrapy.Spider):
 
     custom_settings = {
         "DOWNLOAD_DELAY": 1,
-        "LOG_LEVEL": "INFO",  # Hide DEBUG logs
-        "LOG_FORMAT": "%(levelname)s: %(message)s",  # Cleaner log output
-        "LOG_STDOUT": True,  # Capture print statements if used
+        "LOG_LEVEL": "WARNING",  # Reduce log verbosity to avoid interfering with progress bar
+        "LOG_FORMAT": "%(levelname)s: %(message)s",
+        "LOG_STDOUT": False,  # Don't capture stdout to avoid interfering with tqdm
     }
     
     def __init__(self, year=None, year_url=None, lang="all", *args, **kwargs):
@@ -64,6 +65,24 @@ class GazetteDownloadSpider(scrapy.Spider):
         self.failed_downloads = 0
         self.progress_bar = None
         
+        # Setup separate file logger to avoid interfering with progress bar
+        self.setup_file_logger()
+        
+
+    def setup_file_logger(self):
+        """Setup a separate file logger for detailed logging"""
+        log_file = os.path.join(self.year_folder, f"{self.year}_spider_log.txt")
+        self.file_logger = logging.getLogger(f'gazette_spider_{self.year}')
+        self.file_logger.setLevel(logging.INFO)
+        
+        # Remove existing handlers to avoid duplicates
+        for handler in self.file_logger.handlers[:]:
+            self.file_logger.removeHandler(handler)
+        
+        handler = logging.FileHandler(log_file, encoding='utf-8')
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
+        handler.setFormatter(formatter)
+        self.file_logger.addHandler(handler)
 
     def initialize_log_files(self):
         """Initialize CSV log files with headers if they don't exist"""
@@ -92,7 +111,7 @@ class GazetteDownloadSpider(scrapy.Spider):
                             file_key = f"{row['gazette_id']}_{row['language']}"
                             archived.add(file_key)
             except Exception as e:
-                self.logger.warning(f"Could not load archive log: {e}")
+                print(f"Warning: Could not load archive log: {e}")
         return archived
 
     def load_failed_files(self):
@@ -107,7 +126,7 @@ class GazetteDownloadSpider(scrapy.Spider):
                         retry_count = int(row.get('retry_count', 0))
                         failed[file_key] = retry_count
             except Exception as e:
-                self.logger.warning(f"Could not load failed log: {e}")
+                print(f"Warning: Could not load failed log: {e}")
         return failed
 
     def is_already_processed(self, gazette_id, language):
@@ -158,24 +177,60 @@ class GazetteDownloadSpider(scrapy.Spider):
                     return date_obj.year, date_obj.month, date_obj.day
                 except ValueError:
                     # If all parsing fails, use current date components as fallback
-                    self.logger.warning(f"Could not parse date: {date_str}, using current date")
+                    self.file_logger.warning(f"Could not parse date: {date_str}, using current date")
                     now = datetime.now()
                     return now.year, now.month, now.day
 
     def parse(self, response):
         
         rows = response.css("table tbody tr")
+        self.total_gazettes = len(rows)
         
-        # Initialize progress bar
+        # Count total downloads first (excluding already processed)
+        print(f"🔍 Analyzing {self.total_gazettes} gazette entries...")
+        potential_downloads = 0
+        already_processed_count = 0
+        
+        for row in rows:
+            gazette_id = row.css("td:nth-child(1)::text").get(default="").strip().replace("/", "-")
+            download_cell = row.css("td:nth-child(4)")
+            pdf_buttons = download_cell.css("a")
+            
+            for btn in pdf_buttons:
+                full_lang_text = btn.css("button::text").get(default="unknown").strip().lower()
+                short_code = self.lang_map.get(full_lang_text)
+                
+                if not short_code:
+                    continue
+                
+                if self.lang != "all" and self.lang != short_code:
+                    continue
+                
+                potential_downloads += 1
+                
+                # Check if already processed
+                if self.is_already_processed(gazette_id, full_lang_text):
+                    already_processed_count += 1
+                elif not self.should_retry_failed(gazette_id, full_lang_text):
+                    already_processed_count += 1
+                else:
+                    self.total_downloads += 1
+        
+        # Initialize progress bar with clean format
         self.progress_bar = tqdm(
-            total=0,  # Will be updated as we count downloads
-            desc="Downloading Gazettes",
-            unit="file",
-            bar_format="{l_bar}{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]"
+            total=self.total_downloads,
+            desc="📥 Downloading",
+            unit="files",
+            bar_format="{desc}: {percentage:3.0f}%|{bar:30}| {n_fmt}/{total_fmt} [{rate_fmt}]",
+            position=0,
+            leave=True
         )
         
-        self.logger.info(f"Found {self.total_gazettes} gazette entries to process")
-
+        print(f"📊 Analysis complete:")
+        print(f"   • {potential_downloads} total files match your language filter")
+        print(f"   • {already_processed_count} already processed (skipping)")
+        print(f"   • {self.total_downloads} files to download")
+        self.file_logger.info(f"Found {self.total_gazettes} gazette entries, {potential_downloads} potential downloads, {self.total_downloads} new downloads needed")
 
         for row in rows:
             gazette_id = row.css("td:nth-child(1)::text").get(default="").strip().replace("/", "-")
@@ -199,39 +254,19 @@ class GazetteDownloadSpider(scrapy.Spider):
             pdf_buttons = download_cell.css("a")
 
             if not pdf_buttons:
-                self.logger.info(f"[EMPTY] {gazette_id} – No download links, only created folder. \n")
+                self.file_logger.info(f"[EMPTY] {gazette_id} – No download links, only created folder.")
                 # Log empty gazette entry
                 self.log_archived_file(gazette_id, date, "none", desc, gazette_folder, 0, "EMPTY")
                 self.processed_gazettes += 1
                 continue
             
-            # Count downloads for this gazette
-            download_count = 0
-            for btn in pdf_buttons:
-                full_lang_text = btn.css("button::text").get(default="unknown").strip().lower()
-                short_code = self.lang_map.get(full_lang_text)
-                
-                if not short_code:
-                    continue
-                
-                if self.lang != "all" and self.lang != short_code:
-                    continue
-                
-                download_count += 1
-            
-            # Update progress bar total
-            self.total_downloads += download_count
-            self.progress_bar.total = self.total_downloads
-            self.progress_bar.refresh()
-            
-            
             for btn in pdf_buttons:
                 
                 full_lang_text = btn.css("button::text").get(default="unknown").strip().lower()
                 short_code = self.lang_map.get(full_lang_text)
                 
                 if not short_code:
-                    self.logger.warning(f"[UNKNOWN LANGUAGE] {full_lang_text} – Skipping.")
+                    self.file_logger.warning(f"[UNKNOWN LANGUAGE] {full_lang_text} – Skipping.")
                     continue
                 
                 if self.lang != "all" and self.lang != short_code:
@@ -239,16 +274,16 @@ class GazetteDownloadSpider(scrapy.Spider):
                 
                 # Check if already processed
                 if self.is_already_processed(gazette_id, full_lang_text):
-                    self.logger.info(f"[SKIPPED] {gazette_id} ({full_lang_text}) – Already archived")
+                    self.file_logger.info(f"[SKIPPED] {gazette_id} ({full_lang_text}) – Already archived")
                     self.skipped_downloads += 1
-                    self.update_progress_bar(f"Skipped: {gazette_id} ({full_lang_text}) - Already archived")
+                    self.update_progress_bar("skip")
                     continue
 
                 # Check if should retry failed downloads
                 if not self.should_retry_failed(gazette_id, full_lang_text):
-                    self.logger.info(f"[SKIPPED] {gazette_id} ({full_lang_text}) – Max retries exceeded")
+                    self.file_logger.info(f"[SKIPPED] {gazette_id} ({full_lang_text}) – Max retries exceeded")
                     self.skipped_downloads += 1
-                    self.update_progress_bar(f"Skipped: {gazette_id} ({full_lang_text}) - Max retries exceeded")
+                    self.update_progress_bar("skip")
                     continue
 
                 pdf_url = urljoin(response.url, btn.attrib["href"])
@@ -270,12 +305,26 @@ class GazetteDownloadSpider(scrapy.Spider):
                 
             self.processed_gazettes += 1
             
-    def update_progress_bar(self, status_msg):
-        """Update progress bar with current status"""
+    def update_progress_bar(self, action="download"):
+        """Update progress bar with minimal distraction"""
         if self.progress_bar:
-            completed = self.completed_downloads + self.skipped_downloads + self.failed_downloads
+            if action == "download":
+                self.completed_downloads += 1
+            elif action == "skip":
+                # Don't increment here - we're only tracking skips that were counted in total_downloads
+                pass
+            elif action == "fail":
+                self.failed_downloads += 1
+            
+            # Update progress (only count actual downloads and failures against the total)
+            completed = self.completed_downloads + self.failed_downloads
             self.progress_bar.n = completed
-            self.progress_bar.set_description(f"Processing: {status_msg[:50]}...")
+            
+            # Update description with current stats
+            desc = f"📥 Downloaded: {self.completed_downloads}"
+            if self.failed_downloads > 0:
+                desc += f" | ❌ Failed: {self.failed_downloads}"
+            self.progress_bar.set_description(desc[:50])  # Shorter description
             self.progress_bar.refresh()
 
     def save_pdf(self, response):
@@ -291,24 +340,21 @@ class GazetteDownloadSpider(scrapy.Spider):
             
             file_size = len(response.body)
             
-            
-            # Log successful download
+            # Log successful download to file only
             self.log_archived_file(gazette_id, date, lang, description, path, file_size, "SUCCESS")
+            self.file_logger.info(f"[SAVED] Gazette {date} {gazette_id} ({lang}) – {file_size} bytes")
             
             # Add to archived files set to prevent re-downloading in same session
             file_key = f"{gazette_id}_{lang}"
             self.archived_files.add(file_key)
             
             # Update progress
-            self.completed_downloads += 1
-            self.update_progress_bar(f"Downloaded: {gazette_id} ({lang})")
-            self.logger.info(f"[SAVED] Gazette {date} {gazette_id} ({lang}) – {file_size} bytes \n")
+            self.update_progress_bar("download")
             
         except Exception as e:
-            self.logger.error(f"[ERROR] Failed to save Gazette {date} {gazette_id}  ({lang}): {e}")
+            self.file_logger.error(f"[ERROR] Failed to save Gazette {date} {gazette_id} ({lang}): {e}")
             self.log_failed_file(gazette_id, date, lang, description, response.url, f"Save error: {str(e)}")
-            self.failed_downloads += 1
-            self.update_progress_bar(f"Failed: {gazette_id} ({lang})")
+            self.update_progress_bar("fail")
 
     def download_failed(self, failure):
         request = failure.request
@@ -318,15 +364,13 @@ class GazetteDownloadSpider(scrapy.Spider):
         description = request.meta.get("description", "unknown")
         
         error_reason = str(failure.value)
-        self.logger.warning(f"[FAILED] {gazette_id} ({lang}) – {request.url} – {error_reason}")
+        self.file_logger.warning(f"[FAILED] {gazette_id} ({lang}) – {request.url} – {error_reason}")
         
         # Log failed download
         self.log_failed_file(gazette_id, date, lang, description, request.url, error_reason)
         
         # Update progress
-        self.failed_downloads += 1
-        self.update_progress_bar(f"Failed: {gazette_id} ({lang})")
-        
+        self.update_progress_bar("fail")
         
 
     def closed(self, reason):
@@ -334,19 +378,25 @@ class GazetteDownloadSpider(scrapy.Spider):
         # Close progress bar
         if self.progress_bar:
             self.progress_bar.close()
+            
+        # Clear line and print final summary
+        print("\n" + "=" * 60)
+        print(f"🎯 DOWNLOAD SUMMARY for {self.year}")
+        print("=" * 60)
+        print(f"📊 Total gazette entries: {self.processed_gazettes}/{self.total_gazettes}")
+        print(f"✅ Successfully downloaded: {self.completed_downloads} files")
+        if self.skipped_downloads > 0:
+            print(f"⏭️  Skipped (already archived): {self.skipped_downloads} files")
+        if self.failed_downloads > 0:
+            print(f"❌ Failed downloads: {self.failed_downloads} files")
+        total_processed = self.completed_downloads + self.skipped_downloads + self.failed_downloads
+        print(f"📁 Total files processed: {total_processed}")
+        print("=" * 60)
+        print(f"📄 Archive log: {self.archive_log_file}")
+        print(f"🚫 Failed log: {self.failed_log_file}")
+        print(f"📋 Detailed log: {os.path.join(self.year_folder, f'{self.year}_spider_log.txt')}")
+        print("=" * 60)
         
-        self.logger.info(f"Spider closed. Reason: {reason} \n")
-        
-        # Print detailed summary statistics
-        self.logger.info(f"=" * 60)
-        self.logger.info(f"DOWNLOAD SUMMARY for {self.year}")
-        self.logger.info(f"=" * 60)
-        self.logger.info(f"  📊 Total gazette entries processed: {self.processed_gazettes}/{self.total_gazettes} \n")
-        self.logger.info(f"  ✅ Successfully downloaded: {self.completed_downloads} files \n")
-        self.logger.info(f"  ⏭️  Skipped (already archived): {self.skipped_downloads} files \n")
-        self.logger.info(f"  ❌ Failed downloads: {self.failed_downloads} files \n")
-        self.logger.info(f"  📁 Total files processed: {self.completed_downloads + self.skipped_downloads + self.failed_downloads} ")
-        self.logger.info(f"=" * 60)
-        self.logger.info(f"  📄 Archive log: {self.archive_log_file} \n")
-        self.logger.info(f"  🚫 Failed log: {self.failed_log_file}")
-        self.logger.info(f"=" * 60)
+        # Log summary to file as well
+        self.file_logger.info(f"Spider closed. Reason: {reason}")
+        self.file_logger.info(f"SUMMARY - Processed: {self.processed_gazettes}, Downloaded: {self.completed_downloads}, Skipped: {self.skipped_downloads}, Failed: {self.failed_downloads}")
