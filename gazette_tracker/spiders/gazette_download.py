@@ -7,6 +7,12 @@ import csv
 from datetime import datetime
 from tqdm import tqdm
 import logging
+import signal
+import sys
+import tempfile
+import atexit
+from scrapy import signals
+from scrapy.exceptions import CloseSpider
 
 class GazetteDownloadSpider(scrapy.Spider):
     name = "gazette_download"
@@ -14,13 +20,21 @@ class GazetteDownloadSpider(scrapy.Spider):
 
     custom_settings = {
         "DOWNLOAD_DELAY": 1,
-        "LOG_LEVEL": "WARNING",  # Reduce log verbosity to avoid interfering with progress bar
+        "LOG_LEVEL": "WARNING",
         "LOG_FORMAT": "%(levelname)s: %(message)s",
-        "LOG_STDOUT": False,  # Don't capture stdout to avoid interfering with tqdm
+        "LOG_STDOUT": False,
+        # Handle data loss gracefully instead of failing
+        "DOWNLOAD_FAIL_ON_DATALOSS": False,
+        # Disable the generator return value warning
+        "WARN_ON_GENERATOR_RETURN_VALUE": False,
     }
     
     def __init__(self, year=None, year_url=None, lang="all", *args, **kwargs):
         super().__init__(*args, **kwargs)
+        
+        # Initialize crawler and settings attributes to None - will be set by from_crawler
+        self.crawler = None
+        self.settings = None
         
         self.lang_map = {
             "english": "en",
@@ -65,9 +79,106 @@ class GazetteDownloadSpider(scrapy.Spider):
         self.failed_downloads = 0
         self.progress_bar = None
         
-        # Setup separate file logger to avoid interfering with progress bar
+        # Track ongoing downloads for cleanup
+        self.ongoing_downloads = set()
+        
+        # Graceful shutdown flags
+        self.shutdown_requested = False
+        self.graceful_shutdown = False
+        
+        # Setup signal handlers and cleanup
+        self.setup_signal_handlers()
         self.setup_file_logger()
         
+        # Register cleanup function to run on exit
+        atexit.register(self.emergency_cleanup)
+
+    @classmethod
+    def from_crawler(cls, crawler, *args, **kwargs):
+        spider = cls(*args, **kwargs)
+        # Set the crawler reference so spider can access settings
+        spider.crawler = crawler
+        spider.settings = crawler.settings  # Add this line to fix the settings issue
+        # Connect the spider_closed signal
+        crawler.signals.connect(spider.spider_closed, signal=signals.spider_closed)
+        return spider
+
+    def setup_signal_handlers(self):
+        """Setup signal handlers for graceful shutdown"""
+        def signal_handler(signum, frame):
+            if self.shutdown_requested:
+                # If already shutting down and user presses Ctrl+C again, force exit
+                print(f"\n🛑 Force shutdown requested...")
+                self.force_cleanup()
+                sys.exit(1)
+            
+            print(f"\n🛑 Received interrupt signal. Finishing current downloads...")
+            self.shutdown_requested = True
+            self.graceful_shutdown = True
+            
+            if hasattr(self, 'crawler') and self.crawler:
+                # Tell Scrapy to stop gracefully
+                self.crawler.engine.close_spider(self, 'User requested shutdown')
+            else:
+                # Fallback cleanup if crawler not available
+                self.cleanup_and_exit()
+        
+        signal.signal(signal.SIGINT, signal_handler)  # Ctrl+C
+        signal.signal(signal.SIGTERM, signal_handler)  # Kill command
+
+    def cleanup_and_exit(self):
+        """Perform cleanup and exit"""
+        print("🧹 Cleaning up...")
+        self.cleanup_partial_downloads()
+        
+        if self.progress_bar:
+            self.progress_bar.close()
+        
+        print("✅ Graceful shutdown complete. Progress saved - you can resume later.")
+        print(f"📊 Downloaded: {self.completed_downloads}, Failed: {self.failed_downloads}")
+        sys.exit(0)
+
+    def force_cleanup(self):
+        """Emergency cleanup for force shutdown"""
+        try:
+            self.cleanup_partial_downloads()
+            if self.progress_bar:
+                self.progress_bar.close()
+        except:
+            pass
+
+    def emergency_cleanup(self):
+        """Emergency cleanup function registered with atexit"""
+        if not self.graceful_shutdown:
+            self.cleanup_partial_downloads()
+
+    def cleanup_partial_downloads(self):
+        """Clean up any partial downloads that were in progress"""
+        cleaned_count = 0
+        for file_path in self.ongoing_downloads.copy():
+            try:
+                if os.path.exists(file_path):
+                    # Check if file is likely incomplete (very small size)
+                    file_size = os.path.getsize(file_path)
+                    if file_size < 1024:  # Files smaller than 1KB are likely incomplete
+                        os.remove(file_path)
+                        cleaned_count += 1
+                        if hasattr(self, 'file_logger'):
+                            self.file_logger.info(f"Cleaned up partial download: {file_path}")
+                
+                # Also clean up .tmp files
+                temp_path = file_path + ".tmp"
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    cleaned_count += 1
+                    
+                self.ongoing_downloads.remove(file_path)
+            except Exception as e:
+                if hasattr(self, 'file_logger'):
+                    self.file_logger.warning(f"Could not clean up {file_path}: {e}")
+        
+        if cleaned_count > 0:
+            print(f"🧹 Cleaned up {cleaned_count} partial downloads")
 
     def setup_file_logger(self):
         """Setup a separate file logger for detailed logging"""
@@ -98,6 +209,26 @@ class GazetteDownloadSpider(scrapy.Spider):
                 writer = csv.writer(f)
                 writer.writerow(['timestamp', 'gazette_id', 'date', 'language', 'description','url', 'error_reason', 'retry_count'])
 
+    def is_file_complete_and_valid(self, file_path, min_size=1024):
+        """Check if a downloaded file is complete and valid"""
+        try:
+            if not os.path.exists(file_path):
+                return False
+            
+            file_size = os.path.getsize(file_path)
+            if file_size < min_size:  # Files smaller than 1KB are likely incomplete
+                return False
+            
+            # Basic PDF validation - check if it starts with PDF header
+            with open(file_path, 'rb') as f:
+                header = f.read(4)
+                if header != b'%PDF':
+                    return False
+            
+            return True
+        except Exception:
+            return False
+
     def load_archived_files(self):
         """Load list of already archived files from CSV"""
         archived = set()
@@ -107,9 +238,16 @@ class GazetteDownloadSpider(scrapy.Spider):
                     reader = csv.DictReader(f)
                     for row in reader:
                         if row['status'] == 'SUCCESS':
-                            # Create unique identifier: gazette_id + language
-                            file_key = f"{row['gazette_id']}_{row['language']}"
-                            archived.add(file_key)
+                            # Verify the file still exists and is valid
+                            file_path = row.get('file_path', '')
+                            if file_path and self.is_file_complete_and_valid(file_path):
+                                # Create unique identifier: gazette_id + language
+                                file_key = f"{row['gazette_id']}_{row['language']}"
+                                archived.add(file_key)
+                            else:
+                                # File is missing or corrupted, allow re-download
+                                if hasattr(self, 'file_logger'):
+                                    self.file_logger.warning(f"File missing or corrupted, will re-download: {file_path}")
             except Exception as e:
                 print(f"Warning: Could not load archive log: {e}")
         return archived
@@ -162,7 +300,6 @@ class GazetteDownloadSpider(scrapy.Spider):
         """Parse date string and return year, month, day components"""
         try:
             # Assuming date format is YYYY-MM-DD or similar
-            # Adjust this based on your actual date format
             date_obj = datetime.strptime(date_str, "%Y-%m-%d")
             return date_obj.year, date_obj.month, date_obj.day
         except ValueError:
@@ -177,11 +314,16 @@ class GazetteDownloadSpider(scrapy.Spider):
                     return date_obj.year, date_obj.month, date_obj.day
                 except ValueError:
                     # If all parsing fails, use current date components as fallback
-                    self.file_logger.warning(f"Could not parse date: {date_str}, using current date")
+                    if hasattr(self, 'file_logger'):
+                        self.file_logger.warning(f"Could not parse date: {date_str}, using current date")
                     now = datetime.now()
                     return now.year, now.month, now.day
 
     def parse(self, response):
+        # Check if shutdown was requested
+        if self.shutdown_requested:
+            self.file_logger.info("Shutdown requested during parsing, stopping")
+            raise CloseSpider('User requested shutdown')
         
         rows = response.css("table tbody tr")
         self.total_gazettes = len(rows)
@@ -226,13 +368,19 @@ class GazetteDownloadSpider(scrapy.Spider):
             leave=True
         )
         
-        print(f"📊 Analysis complete:")
+        print(f"\n📊 Analysis complete:")
         print(f"   • {potential_downloads} total files match your language filter")
         print(f"   • {already_processed_count} already processed (skipping)")
         print(f"   • {self.total_downloads} files to download")
+        print(f"💡 Press Ctrl+C to gracefully stop after current downloads complete")
         self.file_logger.info(f"Found {self.total_gazettes} gazette entries, {potential_downloads} potential downloads, {self.total_downloads} new downloads needed")
 
         for row in rows:
+            # Check for shutdown request before processing each gazette
+            if self.shutdown_requested:
+                self.file_logger.info("Shutdown requested, stopping gazette processing")
+                break
+                
             gazette_id = row.css("td:nth-child(1)::text").get(default="").strip().replace("/", "-")
             date = row.css("td:nth-child(2)::text").get(default="").strip()
             desc = row.css("td:nth-child(3)::text").get(default="").strip()
@@ -261,6 +409,10 @@ class GazetteDownloadSpider(scrapy.Spider):
                 continue
             
             for btn in pdf_buttons:
+                # Check for shutdown request before each download
+                if self.shutdown_requested:
+                    self.file_logger.info("Shutdown requested, stopping download requests")
+                    return
                 
                 full_lang_text = btn.css("button::text").get(default="unknown").strip().lower()
                 short_code = self.lang_map.get(full_lang_text)
@@ -328,33 +480,62 @@ class GazetteDownloadSpider(scrapy.Spider):
             self.progress_bar.refresh()
 
     def save_pdf(self, response):
+        # Check if shutdown was requested
+        if self.shutdown_requested:
+            self.file_logger.info("Shutdown requested, skipping save_pdf")
+            return
+            
         path = response.meta["file_path"]
         gazette_id = response.meta["gazette_id"]
         lang = response.meta["lang"]
         date = response.meta["date"]
         description = response.meta["description"]
         
+        # Add to ongoing downloads tracking
+        self.ongoing_downloads.add(path)
+        
         try:
-            with open(path, "wb") as f:
+            # Use temporary file to ensure atomic write
+            temp_path = path + ".tmp"
+            
+            with open(temp_path, "wb") as f:
                 f.write(response.body)
             
-            file_size = len(response.body)
-            
-            # Log successful download to file only
-            self.log_archived_file(gazette_id, date, lang, description, path, file_size, "SUCCESS")
-            self.file_logger.info(f"[SAVED] Gazette {date} {gazette_id} ({lang}) – {file_size} bytes")
-            
-            # Add to archived files set to prevent re-downloading in same session
-            file_key = f"{gazette_id}_{lang}"
-            self.archived_files.add(file_key)
-            
-            # Update progress
-            self.update_progress_bar("download")
-            
+            # Verify the download is complete and valid
+            if self.is_file_complete_and_valid(temp_path):
+                # Move from temp to final location (atomic operation)
+                os.rename(temp_path, path)
+                
+                file_size = len(response.body)
+                
+                # Log successful download
+                self.log_archived_file(gazette_id, date, lang, description, path, file_size, "SUCCESS")
+                self.file_logger.info(f"[SAVED] Gazette {date} {gazette_id} ({lang}) – {file_size} bytes")
+                
+                # Add to archived files set to prevent re-downloading in same session
+                file_key = f"{gazette_id}_{lang}"
+                self.archived_files.add(file_key)
+                
+                # Update progress
+                self.update_progress_bar("download")
+            else:
+                # File is invalid, clean up and log as failed
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                raise Exception("Downloaded file is invalid or corrupted")
+                
         except Exception as e:
+            # Clean up any temp files
+            temp_path = path + ".tmp"
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+            
             self.file_logger.error(f"[ERROR] Failed to save Gazette {date} {gazette_id} ({lang}): {e}")
             self.log_failed_file(gazette_id, date, lang, description, response.url, f"Save error: {str(e)}")
             self.update_progress_bar("fail")
+        finally:
+            # Remove from ongoing downloads
+            self.ongoing_downloads.discard(path)
 
     def download_failed(self, failure):
         request = failure.request
@@ -371,10 +552,17 @@ class GazetteDownloadSpider(scrapy.Spider):
         
         # Update progress
         self.update_progress_bar("fail")
-        
+
+    def spider_closed(self, spider, reason):
+        """Called when spider closes via Scrapy's signal system"""
+        self.graceful_shutdown = True
+        self.closed(reason)
 
     def closed(self, reason):
         """Called when spider closes - print summary"""
+        # Clean up any ongoing downloads
+        self.cleanup_partial_downloads()
+        
         # Close progress bar
         if self.progress_bar:
             self.progress_bar.close()
@@ -395,6 +583,13 @@ class GazetteDownloadSpider(scrapy.Spider):
         print(f"📄 Archive log: {self.archive_log_file}")
         print(f"🚫 Failed log: {self.failed_log_file}")
         print(f"📋 Detailed log: {os.path.join(self.year_folder, f'{self.year}_spider_log.txt')}")
+        
+        # Add resumption info
+        if reason in ['cancelled', 'shutdown', 'User requested shutdown']:
+            print("🔄 Download was interrupted - you can resume by running the same command again")
+        elif self.failed_downloads > 0:
+            print("🔄 Some downloads failed - run again to retry failed downloads")
+        
         print("=" * 60)
         
         # Log summary to file as well
