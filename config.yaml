@@ -1,0 +1,117 @@
+# Gazette Spider Configuration
+gazette_years_spider:
+  name: "gazette_years"
+  start_urls:
+    - "https://documents.gov.lk/view/extra-gazettes/egz.html"
+  
+  # Selectors for parsing
+  selectors:
+    year_links: "div.button-container a.btn-primary"
+    year_text: "::text"
+  
+  # Output settings
+  output:
+    save_to_file: true
+    filename: "years.json"
+    sort_descending: true
+    encoding: "utf-8"
+    indent: 2
+
+gazette_download_spider:
+  name: "gazette_download"
+  
+  # Directory settings
+  directories:
+    base_dir: "~/Desktop/gazette-archive"  # Will be expanded to user's home
+    create_year_folders: true
+    create_month_folders: true
+    create_date_folders: true
+    create_gazette_folders: true
+  
+  # Download settings
+  download:
+    delay: 1  # seconds between requests
+    max_retries: 3
+    min_file_size: 1024  # minimum file size in bytes to consider valid
+    timeout: 30  # request timeout in seconds
+    concurrent_requests: 16
+    concurrent_requests_per_domain: 8
+  
+  # Language mapping
+  language_mapping:
+    english: "en"
+    sinhala: "si" 
+    tamil: "ta"
+  
+  # File naming
+  file_naming:
+    pattern: "{gazette_id}_{language}.pdf"
+    date_format: "%Y-%m-%d"
+    replace_chars:
+      "/": "-"
+      "\\": "-"
+  
+  # Logging settings
+  logging:
+    level: "INFO"
+    log_to_file: true
+    log_found_links: true
+    log_downloads: true
+    log_skips: true
+    log_failures: true
+    log_files:
+      archive: "{year}_archive_log.csv"
+      failed: "{year}_failed_log.csv"
+      spider: "{year}_spider_log.txt"
+  
+  # Progress tracking
+  progress:
+    show_progress_bar: true
+    update_frequency: 1  # update every N downloads
+    show_statistics: true
+  
+  # Selectors for parsing gazette pages
+  selectors:
+    table_rows: "table tbody tr"
+    gazette_id: "td:nth-child(1)::text"
+    date: "td:nth-child(2)::text"
+    description: "td:nth-child(3)::text"
+    download_cell: "td:nth-child(4)"
+    pdf_buttons: "a"
+    button_text: "button::text"
+  
+  # Validation settings
+  validation:
+    pdf_header_check: true
+    pdf_header: "%PDF"
+    min_valid_size: 1024
+    verify_downloads: true
+  
+  # Cleanup settings
+  cleanup:
+    remove_partial_downloads: true
+    remove_temp_files: true
+    temp_file_extension: ".tmp"
+    partial_file_threshold: 1024  # bytes
+
+# Scrapy settings that can be overridden
+scrapy_settings:
+  DOWNLOAD_DELAY: 1
+  LOG_LEVEL: "CRITICAL"
+  LOG_FORMAT: "%(levelname)s: %(message)s"
+  LOG_STDOUT: false
+  DOWNLOAD_FAIL_ON_DATALOSS: false
+  WARN_ON_GENERATOR_RETURN_VALUE: false
+  ROBOTSTXT_OBEY: false
+  CONCURRENT_REQUESTS: 16
+  CONCURRENT_REQUESTS_PER_DOMAIN: 8
+  DOWNLOAD_TIMEOUT: 30
+
+# CLI default settings
+cli_defaults:
+  year: "all"
+  month: null
+  day: null
+  language: "all"
+  enable_scrapy_logs: false
+  update_years: false
