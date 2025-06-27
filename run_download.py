@@ -149,10 +149,8 @@ class GazetteDownloadSpiderWithValidation(GazetteDownloadSpider):
 def main():
     # Handle --update-years flag (only update JSON and exit)
     if args.update_years:
-        print("\n🔄 --update-years flag detected. Updating years.json...")
         year_data = update_years_json()
         if year_data:
-            print(f"\n✅ years.json successfully updated with {len(year_data)} years.")
             print("💡 You can now run the downloader without --update-years flag.")
         else:
             print("\n❌ Failed to update years.json")
