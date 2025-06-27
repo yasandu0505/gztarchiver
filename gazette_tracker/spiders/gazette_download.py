@@ -20,7 +20,7 @@ class GazetteDownloadSpider(scrapy.Spider):
 
     custom_settings = {
         "DOWNLOAD_DELAY": 1,
-        "LOG_LEVEL": "WARNING",
+        "LOG_LEVEL": "CRITICAL",
         "LOG_FORMAT": "%(levelname)s: %(message)s",
         "LOG_STDOUT": False,
         # Handle data loss gracefully instead of failing
