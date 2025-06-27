@@ -12,43 +12,48 @@ cd test-scraper
 
 **Show help:**
 ```bash
-python3 run_download.py --help
+python3 dtracer.py --help
+```
+
+**Fetch new data:**
+```bash
+python3 dtracer.py --update_years
 ```
 
 **Extract all data:**
 ```bash
-python3 run_download.py
+python3 dtracer.py
 ```
 
 **Extract data for specific year:**
 ```bash
-python3 run_download.py --year 2023
+python3 dtracer.py --year 2023
 ```
 
 **Extract data for specific year and language:**
 ```bash
-python3 run_download.py --year 2023 --lang en
+python3 dtracer.py --year 2023 --lang en
 ```
 
 **Extract data for specific month in a year:**
 ```bash
-python3 run_download.py --year 2023 --month 06
+python3 dtracer.py --year 2023 --month 06
 ```
 
 **Extract data for specific date:**
 ```bash
-python3 run_download.py --year 2023 --month 06 --day 15
+python3 dtracer.py --year 2023 --month 06 --day 15
 ```
 
 **Extract data with language filter for specific month:**
 ```bash
-python3 run_download.py --year 2023 --month 03 --lang si
+python3 dtracer.py --year 2023 --month 03 --lang si
 ```
 
 **Enable/disable logs:**
 ```bash
-python3 run_download.py --c_logs y    # Enable logs
-python3 run_download.py --c_logs n    # Disable logs
+python3 dtracer.py --c_logs y    # Enable logs
+python3 dtracer.py --c_logs n    # Disable logs
 ```
 
 ## 🎛️ Options
@@ -60,6 +65,8 @@ python3 run_download.py --c_logs n    # Disable logs
 | `--day` | Filter by specific day (01-31) | `--day 15` | None |
 | `--lang` | Specify language | `--lang en`, `--lang si`, `--lang ta`, `--lang all` | `all` |
 | `--c_logs` | Enable/disable logs (Y/N) | `--c_logs Y` | `N` |
+| `--update_years` | Update years.json by scraping the website | `--update_years` | `optional` |
+
 
 ## 🌍 Language Codes
 
@@ -74,27 +81,27 @@ python3 run_download.py --c_logs n    # Disable logs
 
 **Download all gazettes for 2023:**
 ```bash
-python3 run_download.py --year 2023
+python3 dtracer.py --year 2023
 ```
 
 **Download gazettes for June 2023:**
 ```bash
-python3 run_download.py --year 2023 --month 06
+python3 dtracer.py --year 2023 --month 06
 ```
 
 **Download gazettes for June 15, 2023:**
 ```bash
-python3 run_download.py --year 2023 --month 06 --day 15
+python3 dtracer.py --year 2023 --month 06 --day 15
 ```
 
 **Download English gazettes for March 2023:**
 ```bash
-python3 run_download.py --year 2023 --month 03 --lang en
+python3 dtracer.py --year 2023 --month 03 --lang en
 ```
 
 **Download Sinhala gazettes for all available years:**
 ```bash
-python3 run_download.py --year all --lang si
+python3 dtracer.py --year all --lang si
 ```
 
 ## ✨ Features
@@ -104,6 +111,7 @@ python3 run_download.py --year all --lang si
 - **Progress tracking**: Real-time download progress with statistics
 - **Smart filtering**: Filter by year, month, day, and language
 - **File validation**: Automatic validation of downloaded PDF files
+- **Get new updates**: Can get new updates years and other data
 - **Organized storage**: Files saved in structured folders: `year/month/day/gazette_id/`
 - **Comprehensive logging**: Detailed logs for successful and failed downloads
 - **Error handling**: Automatic retry for failed downloads with intelligent error reporting
