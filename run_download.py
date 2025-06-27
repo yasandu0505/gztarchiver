@@ -3,9 +3,11 @@ import argparse
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from gazette_tracker.spiders.gazette_download import GazetteDownloadSpider
+from gazette_tracker.spiders.gazette_years import GazetteYearsSpider
 from scrapy.utils.log import configure_logging
 import logging
 import sys
+import os
 
 # CLI arguments
 parser = argparse.ArgumentParser(description="Download gazettes by year and language.")
@@ -14,6 +16,7 @@ parser.add_argument("--month", help="Month to download (e.g., 01, 12). Optional.
 parser.add_argument("--day", help="Day to download (e.g., 01, 31). Optional.")
 parser.add_argument("--lang", default="all", help="Language: en (English), si (Sinhala), ta (Tamil), or all. Default is 'all'.")
 parser.add_argument("--c_logs", default="N", help="Enable Scrapy logs (Y/N). Default is N.")
+parser.add_argument("--update-years", action="store_true", help="Update years.json by scraping the website first.")
 args = parser.parse_args()
 
 # Configure logging
@@ -25,21 +28,48 @@ if args.c_logs.upper() != "Y":
     })
     logging.getLogger('scrapy').propagate = False
 
-# Load year -> URL mapping
-try:
-    with open("years.json", "r", encoding="utf-8") as f:
-        year_data = json.load(f)
-except FileNotFoundError:
-    print("\n❌ Error: years.json file not found.")
-    sys.exit(1)
-except json.JSONDecodeError:
-    print("\n❌ Error: Invalid JSON format in years.json.")
-    sys.exit(1)
+# Function to update years.json using GazetteYearsSpider
+def update_years_json():
+    """Update years.json by scraping the website."""
+    print("\n🔄 Fetching years data from website...")
+    
+    # Create a separate process for the years spider
+    years_process = CrawlerProcess(get_project_settings())
+    years_process.crawl(GazetteYearsSpider, save_to_file=True)
+    years_process.start()  # This will block until spider finishes
+    
+    # Check if years.json was created/updated
+    if os.path.exists("years.json"):
+        try:
+            with open("years.json", "r", encoding="utf-8") as f:
+                year_data = json.load(f)
+            if year_data:
+                print(f"✅ Successfully updated years.json with {len(year_data)} years")
+                return year_data
+            else:
+                print("⚠️ years.json was created but is empty")
+                return None
+        except json.JSONDecodeError:
+            print("❌ Error: Invalid JSON format in years.json")
+            return None
+    else:
+        print("❌ Failed to create years.json")
+        return None
 
-process = CrawlerProcess(get_project_settings())
+# Function to load year data
+def load_year_data():
+    """Load year data from years.json or return None if not found."""
+    try:
+        with open("years.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except json.JSONDecodeError:
+        print("\n❌ Error: Invalid JSON format in years.json.")
+        sys.exit(1)
 
-# Helper: fetch year entry from years.json
-def get_year_entry(year):
+# Helper: fetch year entry from year data
+def get_year_entry(year_data, year):
     return next((item for item in year_data if item["year"] == year), None)
 
 # Validate month and day inputs
@@ -110,50 +140,61 @@ class GazetteDownloadSpiderWithValidation(GazetteDownloadSpider):
         # Continue with normal processing
         yield from super().parse(response)
 
-# Validate inputs
-validate_date_inputs()
-
-# Exact date mode (year + month + day)
-if args.year.lower() != "all" and args.month and args.day:
-    year_entry = get_year_entry(args.year)
-    if not year_entry:
-        print(f"\n❌ Year '{args.year}' not found in years.json.")
+# Main execution
+def main():
+    # Validate inputs
+    validate_date_inputs()
+    
+    # Handle years data
+    year_data = None
+    
+    # Check if we need to update years.json
+    if args.update_years:
+        print("\n🔄 --update-years flag detected. Fetching fresh data...")
+        year_data = update_years_json()
+    elif not os.path.exists("years.json"):
+        print("\n📥 years.json not found. Creating by fetching data from website...")
+        year_data = update_years_json()
+    else:
+        year_data = load_year_data()
+        if not year_data:
+            print("\n📥 years.json appears to be empty or invalid. Fetching fresh data...")
+            year_data = update_years_json()
+    
+    # Final check
+    if not year_data:
+        print("\n❌ Failed to load or fetch year data. Cannot proceed.")
+        print("💡 Try using --update-years to fetch fresh data from the website.")
         sys.exit(1)
+    
+    
+    # Create process for download spiders
+    process = CrawlerProcess(get_project_settings())
 
-    print(f"\n📅 Starting download for {args.year}-{args.month}-{args.day}...")
-    process.crawl(
-        GazetteDownloadSpiderWithValidation,
-        year=args.year,
-        year_url=year_entry["link"],
-        lang=args.lang,
-        month=args.month,
-        day=args.day
-    )
+    # Exact date mode (year + month + day)
+    if args.year.lower() != "all" and args.month and args.day:
+        year_entry = get_year_entry(year_data, args.year)
+        if not year_entry:
+            print(f"\n❌ Year '{args.year}' not found in available years.")
+            sys.exit(1)
 
-# Year + Month mode (NEW: handles month-only filtering)
-elif args.year.lower() != "all" and args.month and not args.day:
-    year_entry = get_year_entry(args.year)
-    if not year_entry:
-        print(f"\n❌ Year '{args.year}' not found in years.json.")
-        sys.exit(1)
+        print(f"\n📅 Starting download for {args.year}-{args.month}-{args.day}...")
+        process.crawl(
+            GazetteDownloadSpiderWithValidation,
+            year=args.year,
+            year_url=year_entry["link"],
+            lang=args.lang,
+            month=args.month,
+            day=args.day
+        )
 
-    print(f"\n📅 Starting download for {args.year}-{args.month} (entire month)...")
-    process.crawl(
-        GazetteDownloadSpiderWithValidation,
-        year=args.year,
-        year_url=year_entry["link"],
-        lang=args.lang,
-        month=args.month
-    )
+    # Year + Month mode
+    elif args.year.lower() != "all" and args.month and not args.day:
+        year_entry = get_year_entry(year_data, args.year)
+        if not year_entry:
+            print(f"\n❌ Year '{args.year}' not found in available years.")
+            sys.exit(1)
 
-# Year-only mode
-elif args.year.lower() != "all":
-    year_entry = get_year_entry(args.year)
-    if not year_entry:
-        print(f"\n❌ Year '{args.year}' not found in years.json.")
-        sys.exit(1)
-
-    if args.month:
         print(f"\n📅 Starting download for {args.year}-{args.month} (entire month)...")
         process.crawl(
             GazetteDownloadSpiderWithValidation,
@@ -162,7 +203,14 @@ elif args.year.lower() != "all":
             lang=args.lang,
             month=args.month
         )
-    else:
+
+    # Year-only mode
+    elif args.year.lower() != "all":
+        year_entry = get_year_entry(year_data, args.year)
+        if not year_entry:
+            print(f"\n❌ Year '{args.year}' not found in available years.")
+            sys.exit(1)
+
         print(f"\n🔄 Starting download for year {args.year}...")
         process.crawl(
             GazetteDownloadSpider,
@@ -171,27 +219,30 @@ elif args.year.lower() != "all":
             lang=args.lang
         )
 
-# All-years mode
-else:
-    if args.month or args.day:
-        print(f"\n❌ Cannot use month/day filters with --year all. Please specify a specific year.")
-        sys.exit(1)
-        
-    print(f"\n🔄 Starting download for all available years...")
-    for entry in year_data:
-        print(f"\n🔄 Processing year {entry['year']}...")
-        process.crawl(
-            GazetteDownloadSpider,
-            year=entry["year"],
-            year_url=entry["link"],
-            lang=args.lang
-        )
+    # All-years mode
+    else:
+        if args.month or args.day:
+            print(f"\n❌ Cannot use month/day filters with --year all. Please specify a specific year.")
+            sys.exit(1)
+            
+        print(f"\n🔄 Starting download for all available years...")
+        for entry in year_data:
+            print(f"\n🔄 Processing year {entry['year']}...")
+            process.crawl(
+                GazetteDownloadSpider,
+                year=entry["year"],
+                year_url=entry["link"],
+                lang=args.lang
+            )
 
-try:
-    process.start()
-except KeyboardInterrupt:
-    print(f"\n🛑 Download interrupted by user.")
-    sys.exit(0)
-except Exception as e:
-    print(f"\n❌ An error occurred: {e}")
-    sys.exit(1)
+    try:
+        process.start()
+    except KeyboardInterrupt:
+        print(f"\n🛑 Download interrupted by user.")
+        sys.exit(0)
+    except Exception as e:
+        print(f"\n❌ An error occurred: {e}")
+        sys.exit(1)
+
+if __name__ == "__main__":
+    main()
