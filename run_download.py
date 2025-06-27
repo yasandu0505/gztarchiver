@@ -3,7 +3,7 @@ import argparse
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from gazette_tracker.spiders.gazette_download import GazetteDownloadSpider
-from gazette_tracker.spiders.gazette_years import GazetteYearsSpider
+from gazette_tracker.spiders.gazette_years import GazetteYearsSpider  # Import the years spider
 from scrapy.utils.log import configure_logging
 import logging
 import sys
@@ -16,7 +16,7 @@ parser.add_argument("--month", help="Month to download (e.g., 01, 12). Optional.
 parser.add_argument("--day", help="Day to download (e.g., 01, 31). Optional.")
 parser.add_argument("--lang", default="all", help="Language: en (English), si (Sinhala), ta (Tamil), or all. Default is 'all'.")
 parser.add_argument("--c_logs", default="N", help="Enable Scrapy logs (Y/N). Default is N.")
-parser.add_argument("--update-years", action="store_true", help="Update years.json by scraping the website first.")
+parser.add_argument("--update_years", action="store_true", help="Update years.json by scraping the website first.")
 args = parser.parse_args()
 
 # Configure logging
@@ -30,11 +30,16 @@ if args.c_logs.upper() != "Y":
 
 # Function to update years.json using GazetteYearsSpider
 def update_years_json():
-    """Update years.json by scraping the website."""
+    """Update years.json by scraping the website using GazetteYearsSpider."""
     print("\n🔄 Fetching years data from website...")
     
     # Create a separate process for the years spider
-    years_process = CrawlerProcess(get_project_settings())
+    years_settings = get_project_settings()
+    years_settings.set('LOG_LEVEL', 'CRITICAL')
+    years_settings.set('LOG_STDOUT', False)
+    years_process = CrawlerProcess(years_settings)
+    
+    # Configure and start the GazetteYearsSpider
     years_process.crawl(GazetteYearsSpider, save_to_file=True)
     years_process.start()  # This will block until spider finishes
     
@@ -142,17 +147,25 @@ class GazetteDownloadSpiderWithValidation(GazetteDownloadSpider):
 
 # Main execution
 def main():
-    # Validate inputs
+    # Handle --update-years flag (only update JSON and exit)
+    if args.update_years:
+        print("\n🔄 --update-years flag detected. Updating years.json...")
+        year_data = update_years_json()
+        if year_data:
+            print(f"\n✅ years.json successfully updated with {len(year_data)} years.")
+            print("💡 You can now run the downloader without --update-years flag.")
+        else:
+            print("\n❌ Failed to update years.json")
+            sys.exit(1)
+        return  # Exit after updating
+    
+    # Validate inputs for download operations
     validate_date_inputs()
     
-    # Handle years data
+    # Handle years data for download operations
     year_data = None
     
-    # Check if we need to update years.json
-    if args.update_years:
-        print("\n🔄 --update-years flag detected. Fetching fresh data...")
-        year_data = update_years_json()
-    elif not os.path.exists("years.json"):
+    if not os.path.exists("years.json"):
         print("\n📥 years.json not found. Creating by fetching data from website...")
         year_data = update_years_json()
     else:
@@ -167,9 +180,9 @@ def main():
         print("💡 Try using --update-years to fetch fresh data from the website.")
         sys.exit(1)
     
-    
     # Create process for download spiders
-    process = CrawlerProcess(get_project_settings())
+    download_settings = get_project_settings()
+    process = CrawlerProcess(download_settings)
 
     # Exact date mode (year + month + day)
     if args.year.lower() != "all" and args.month and args.day:
