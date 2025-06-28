@@ -148,6 +148,83 @@ def validate_date_inputs(month, day):
     
     return month, day
 
+def check_data_availability(config_loader, year, year_url, month=None, day=None, lang='all'):
+    """
+    Check if gazettes are available for the specified year/month/day combination
+    by performing a quick scrape to see if any data exists.
+    Returns True if data is available, False otherwise.
+    """
+    print(f"🔍 Checking data availability for {year}" + 
+          (f"-{month}" if month else "") + 
+          (f"-{day}" if day else "") + "...")
+    
+    try:
+        # Create a temporary crawler process for validation
+        temp_settings = get_project_settings()
+        scrapy_settings = config_loader.get_scrapy_settings()
+        
+        # Apply scrapy settings but force minimal logging for validation
+        for key, value in scrapy_settings.items():
+            temp_settings.set(key, value)
+        temp_settings.set('LOG_LEVEL', 'ERROR')  # Minimize output during validation
+        
+        temp_process = CrawlerProcess(temp_settings)
+        download_config = config_loader.get_spider_config('gazette_download')
+        
+        # Create a validation spider class that just checks for data existence
+        class ValidationSpider(GazetteDownloadSpider):
+            def __init__(self, config=None, *args, **kwargs):
+                self.spider_config = config or {}
+                self.found_gazettes = False
+                super().__init__(*args, **kwargs)
+            
+            def get_config_value(self, key_path, default=None):
+                """Get nested configuration value using dot notation"""
+                keys = key_path.split('.')
+                value = self.spider_config
+                for key in keys:
+                    if isinstance(value, dict) and key in value:
+                        value = value[key]
+                    else:
+                        return default
+                return value
+            
+            def parse_gazette_page(self, response):
+                """Override to just check if gazettes exist without downloading"""
+                # Call parent method but don't actually download
+                gazette_links = response.css("table tr td a[href*='.pdf']")
+                if gazette_links:
+                    self.found_gazettes = True
+                    # Stop the spider early since we found what we need
+                    self.crawler.engine.close_spider(self, 'validation_complete')
+        
+        # Run validation spider
+        validation_spider = temp_process.crawl(
+            ValidationSpider,
+            config=download_config,
+            year=year,
+            year_url=year_url,
+            lang=lang,
+            month=month,
+            day=day
+        )
+        
+        temp_process.start()
+        
+        # Check if any gazettes were found
+        spider_instance = None
+        for crawler in temp_process.crawlers:
+            if hasattr(crawler.spider, 'found_gazettes'):
+                spider_instance = crawler.spider
+                break
+        
+        return spider_instance.found_gazettes if spider_instance else False
+        
+    except Exception as e:
+        print(f"⚠️ Warning: Could not validate data availability: {e}")
+        # If validation fails, proceed anyway (fail gracefully)
+        return True
+
 def create_download_process(config_loader):
     """Create CrawlerProcess with settings from config"""
     base_settings = get_project_settings()
@@ -260,6 +337,12 @@ def main():
             print(f"\n❌ Year '{args.year}' not found in available years.")
             sys.exit(1)
         
+        # Check if data is available for this specific date
+        if not check_data_availability(config_loader, args.year, year_entry["link"], args.month, args.day, args.lang):
+            print(f"\n❌ No gazettes found for {args.year}-{args.month}-{args.day}.")
+            print("💡 Try checking available dates or use a different date combination.")
+            sys.exit(1)
+        
         print(f"\n📅 Starting download for {args.year}-{args.month}-{args.day}...")
         process.crawl(
             ConfigurableGazetteDownloadSpider,
@@ -278,6 +361,12 @@ def main():
             print(f"\n❌ Year '{args.year}' not found in available years.")
             sys.exit(1)
         
+        # Check if data is available for this month
+        if not check_data_availability(config_loader, args.year, year_entry["link"], args.month, None, args.lang):
+            print(f"\n❌ No gazettes found for {args.year}-{args.month}.")
+            print("💡 Try checking available months or use a different month.")
+            sys.exit(1)
+        
         print(f"\n📅 Starting download for {args.year}-{args.month} (entire month)...")
         process.crawl(
             ConfigurableGazetteDownloadSpider,
@@ -293,6 +382,12 @@ def main():
         year_entry = get_year_entry(year_data, args.year)
         if not year_entry:
             print(f"\n❌ Year '{args.year}' not found in available years.")
+            sys.exit(1)
+        
+        # Check if data is available for this year
+        if not check_data_availability(config_loader, args.year, year_entry["link"], None, None, args.lang):
+            print(f"\n❌ No gazettes found for year {args.year}.")
+            print("💡 Try checking available years or use a different year.")
             sys.exit(1)
         
         print(f"\n🔄 Starting download for year {args.year}...")
