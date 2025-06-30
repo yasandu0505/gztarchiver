@@ -9,6 +9,14 @@ from config_loader import ConfigLoader
 import logging
 import sys
 import os
+import requests
+from datetime import datetime
+import re
+from scrapy import Selector
+import warnings
+
+warnings.filterwarnings('ignore', message='urllib3 v2 only supports OpenSSL 1.1.1+')
+
 
 def create_cli_parser(config_loader):
     """Create CLI argument parser with defaults from config"""
@@ -47,7 +55,7 @@ def configure_scrapy_logging(config_loader, enable_logs):
     scrapy_settings = config_loader.get_scrapy_settings()
     
     if enable_logs.upper() != "Y":
-        log_level = scrapy_settings.get('LOG_LEVEL', 'CRITICAL')
+        log_level = scrapy_settings.get('LOG_LEVEL', 'ERROR')
         log_format = scrapy_settings.get('LOG_FORMAT', '%(levelname)s: %(message)s')
         log_stdout = scrapy_settings.get('LOG_STDOUT', False)
         
@@ -151,7 +159,7 @@ def validate_date_inputs(month, day):
 def check_data_availability(config_loader, year, year_url, month=None, day=None, lang='all'):
     """
     Check if gazettes are available for the specified year/month/day combination
-    by performing a quick scrape to see if any data exists.
+    by making a lightweight HTTP request and parsing the table data.
     Returns True if data is available, False otherwise.
     """
     print(f"🔍 Checking data availability for {year}" + 
@@ -159,71 +167,197 @@ def check_data_availability(config_loader, year, year_url, month=None, day=None,
           (f"-{day}" if day else "") + "...")
     
     try:
-        # Create a temporary crawler process for validation
-        temp_settings = get_project_settings()
-        scrapy_settings = config_loader.get_scrapy_settings()
-        
-        # Apply scrapy settings but force minimal logging for validation
-        for key, value in scrapy_settings.items():
-            temp_settings.set(key, value)
-        temp_settings.set('LOG_LEVEL', 'ERROR')  # Minimize output during validation
-        
-        temp_process = CrawlerProcess(temp_settings)
+        # Get selectors from config
         download_config = config_loader.get_spider_config('gazette_download')
+        selectors = download_config.get('selectors', {})
         
-        # Create a validation spider class that just checks for data existence
-        class ValidationSpider(GazetteDownloadSpider):
-            def __init__(self, config=None, *args, **kwargs):
-                self.spider_config = config or {}
-                self.found_gazettes = False
-                super().__init__(*args, **kwargs)
+        # Required selectors
+        table_rows_selector = selectors.get('table_rows', 'table tbody tr')
+        date_selector = selectors.get('date', 'td:nth-child(2)::text')
+        
+        # Get request settings from config
+        request_config = download_config.get('request', {})
+        headers = request_config.get('headers', {})
+        timeout = request_config.get('timeout', 30)
+        
+        # Build the URL based on language
+        if lang == 'all':
+            # Check all languages - start with English as default
+            lang_suffixes = ['', '/si', '/ta']  # English, Sinhala, Tamil
+        elif lang == 'si':
+            lang_suffixes = ['/si']
+        elif lang == 'ta':
+            lang_suffixes = ['/ta']
+        else:  # 'en' or default
+            lang_suffixes = ['']
+        
+        # Check each language variant
+        for lang_suffix in lang_suffixes:
+            check_url = year_url.rstrip('/') + lang_suffix
             
-            def get_config_value(self, key_path, default=None):
-                """Get nested configuration value using dot notation"""
-                keys = key_path.split('.')
-                value = self.spider_config
-                for key in keys:
-                    if isinstance(value, dict) and key in value:
-                        value = value[key]
-                    else:
-                        return default
-                return value
+            # Make HTTP request
+            response = requests.get(check_url, headers=headers, timeout=timeout)
+            response.raise_for_status()
             
-            def parse_gazette_page(self, response):
-                """Override to just check if gazettes exist without downloading"""
-                # Call parent method but don't actually download
-                gazette_links = response.css("table tr td a[href*='.pdf']")
-                if gazette_links:
-                    self.found_gazettes = True
-                    # Stop the spider early since we found what we need
-                    self.crawler.engine.close_spider(self, 'validation_complete')
+            # Parse the response with Scrapy's Selector
+            selector = Selector(text=response.text)
+            
+            # Get all table rows
+            rows = selector.css(table_rows_selector)
+            
+            if not rows:
+                continue  # Try next language if no rows found
+            
+            # Extract dates from each row
+            found_matching_dates = []
+            
+            for row in rows:
+                try:
+                    # Extract date text
+                    date_text = row.css(date_selector).get()
+                    if not date_text:
+                        continue
+                    
+                    date_text = date_text.strip()
+                    
+                    # Parse the date - assuming format like "2023-12-25" or "25/12/2023" etc.
+                    parsed_date = parse_date_from_text(date_text)
+                    if not parsed_date:
+                        continue
+                    
+                    # Check if this date matches our criteria
+                    if matches_date_criteria(parsed_date, year, month, day):
+                        found_matching_dates.append(parsed_date)
+                        
+                        # If we're just checking for existence, we can return early
+                        if not month and not day:  # Year-only check
+                            return True
+                
+                except Exception as e:
+                    # Skip this row if date parsing fails
+                    continue
+            
+            # Check if we found any matching dates
+            if found_matching_dates:
+                print(f"✅ Found {len(found_matching_dates)} matching gazette(s)")
+                return True
         
-        # Run validation spider
-        validation_spider = temp_process.crawl(
-            ValidationSpider,
-            config=download_config,
-            year=year,
-            year_url=year_url,
-            lang=lang,
-            month=month,
-            day=day
-        )
+        # If we get here, no matching dates were found in any language
+        return False
         
-        temp_process.start()
-        
-        # Check if any gazettes were found
-        spider_instance = None
-        for crawler in temp_process.crawlers:
-            if hasattr(crawler.spider, 'found_gazettes'):
-                spider_instance = crawler.spider
-                break
-        
-        return spider_instance.found_gazettes if spider_instance else False
-        
+    except requests.RequestException as e:
+        print(f"⚠️ Warning: Could not check data availability (network error): {e}")
+        # If network fails, proceed anyway (fail gracefully)
+        return True
     except Exception as e:
         print(f"⚠️ Warning: Could not validate data availability: {e}")
         # If validation fails, proceed anyway (fail gracefully)
         return True
+
+def parse_date_from_text(date_text):
+    """
+    Parse date from various text formats commonly found in gazette tables.
+    Returns a datetime object or None if parsing fails.
+    """
+    if not date_text:
+        return None
+    
+    date_text = date_text.strip()
+    
+    # Common date patterns to try
+    date_patterns = [
+        r'(\d{4})-(\d{1,2})-(\d{1,2})',  # 2023-12-25
+        r'(\d{1,2})/(\d{1,2})/(\d{4})',  # 25/12/2023
+        r'(\d{1,2})-(\d{1,2})-(\d{4})',  # 25-12-2023
+        r'(\d{4})\.(\d{1,2})\.(\d{1,2})', # 2023.12.25
+        r'(\d{1,2})\.(\d{1,2})\.(\d{4})', # 25.12.2023
+    ]
+    
+    for pattern in date_patterns:
+        match = re.search(pattern, date_text)
+        if match:
+            try:
+                groups = match.groups()
+                
+                # Determine if it's YYYY-MM-DD or DD-MM-YYYY format
+                if len(groups[0]) == 4:  # Year first
+                    year, month, day = groups
+                else:  # Day first
+                    day, month, year = groups
+                
+                return datetime(int(year), int(month), int(day))
+            except (ValueError, IndexError):
+                continue
+    
+    return None
+
+def matches_date_criteria(parsed_date, target_year, target_month=None, target_day=None):
+    """
+    Check if a parsed date matches the given criteria.
+    """
+    # Check year
+    if parsed_date.year != int(target_year):
+        return False
+    
+    # Check month if specified
+    if target_month is not None:
+        if parsed_date.month != int(target_month):
+            return False
+    
+    # Check day if specified
+    if target_day is not None:
+        if parsed_date.day != int(target_day):
+            return False
+    
+    return True
+
+# Alternative function if you want to get all available dates for better user feedback
+def get_available_dates(config_loader, year, year_url, lang='all'):
+    """
+    Get all available dates for a given year to provide better user feedback.
+    Returns a list of datetime objects representing available dates.
+    """
+    try:
+        # Get selectors from config
+        download_config = config_loader.get_spider_config('gazette_download')
+        selectors = download_config.get('selectors', {})
+        
+        table_rows_selector = selectors.get('table_rows', 'table tbody tr')
+        date_selector = selectors.get('date', 'td:nth-child(2)::text')
+        
+        # Get request settings
+        request_config = download_config.get('request', {})
+        headers = request_config.get('headers', {})
+        timeout = request_config.get('timeout', 30)
+        
+        # Build URL
+        lang_suffix = '/si' if lang == 'si' else '/ta' if lang == 'ta' else ''
+        check_url = year_url.rstrip('/') + lang_suffix
+        
+        # Make request
+        response = requests.get(check_url, headers=headers, timeout=timeout)
+        response.raise_for_status()
+        
+        # Parse response
+        selector = Selector(text=response.text)
+        rows = selector.css(table_rows_selector)
+        
+        available_dates = []
+        for row in rows:
+            try:
+                date_text = row.css(date_selector).get()
+                if date_text:
+                    parsed_date = parse_date_from_text(date_text.strip())
+                    if parsed_date and parsed_date.year == int(year):
+                        available_dates.append(parsed_date)
+            except:
+                continue
+        
+        return sorted(set(available_dates))  # Remove duplicates and sort
+        
+    except Exception as e:
+        print(f"⚠️ Could not fetch available dates: {e}")
+        return []
 
 def create_download_process(config_loader):
     """Create CrawlerProcess with settings from config"""
@@ -363,9 +497,17 @@ def main():
         
         # Check if data is available for this month
         if not check_data_availability(config_loader, args.year, year_entry["link"], args.month, None, args.lang):
-            print(f"\n❌ No gazettes found for {args.year}-{args.month}.")
-            print("💡 Try checking available months or use a different month.")
-            sys.exit(1)
+            # Optional: Show available dates for better user experience
+            available_dates = get_available_dates(config_loader, args.year, year_entry["link"], args.lang)
+            if available_dates:
+                print("📅 Available dates in this year:")
+                for date in available_dates[:10]:  # Show first 10 dates
+                    print(f"   • {date.strftime('%Y-%m-%d')}")
+                if len(available_dates) > 10:
+                    print(f"   ... and {len(available_dates) - 10} more")
+                    print(f"\n❌ No gazettes found for {args.year}-{args.month}.")
+                    print("💡 Try checking available months or use a different month.")
+                    sys.exit(1)
         
         print(f"\n📅 Starting download for {args.year}-{args.month} (entire month)...")
         process.crawl(
