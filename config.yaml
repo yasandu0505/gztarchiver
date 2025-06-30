@@ -33,7 +33,7 @@ gazette_download_spider:
     delay: 1  # seconds between requests
     max_retries: 3
     min_file_size: 1024  # minimum file size in bytes to consider valid
-    timeout: 30  # request timeout in seconds
+    timeout: 90  # request timeout in seconds
     concurrent_requests: 16
     concurrent_requests_per_domain: 8
   
