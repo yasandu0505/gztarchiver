@@ -13,9 +13,6 @@ import requests
 from datetime import datetime
 import re
 from scrapy import Selector
-import warnings
-
-warnings.filterwarnings('ignore', message='urllib3 v2 only supports OpenSSL 1.1.1+')
 
 
 def create_cli_parser(config_loader):
@@ -55,7 +52,7 @@ def configure_scrapy_logging(config_loader, enable_logs):
     scrapy_settings = config_loader.get_scrapy_settings()
     
     if enable_logs.upper() != "Y":
-        log_level = scrapy_settings.get('LOG_LEVEL', 'ERROR')
+        log_level = scrapy_settings.get('LOG_LEVEL', 'CRITICAL')
         log_format = scrapy_settings.get('LOG_FORMAT', '%(levelname)s: %(message)s')
         log_stdout = scrapy_settings.get('LOG_STDOUT', False)
         
