@@ -664,6 +664,7 @@ class GazetteDownloadSpider(scrapy.Spider):
             
     def update_progress_bar(self, action="download"):
         """Update progress bar with minimal distraction"""
+        
         if self.progress_bar:
             if action == "download":
                 self.completed_downloads += 1
@@ -701,7 +702,7 @@ class GazetteDownloadSpider(scrapy.Spider):
         
         try:
             # Use temporary file to ensure atomic write
-            temp_path = path + ".tmp"
+            temp_path = path + self.get_config_value('gazette_download_spider.cleanup.temp_file_extension' , '.tmp')
             
             with open(temp_path, "wb") as f:
                 f.write(response.body)
@@ -731,7 +732,7 @@ class GazetteDownloadSpider(scrapy.Spider):
                 
         except Exception as e:
             # Clean up any temp files
-            temp_path = path + ".tmp"
+            temp_path = path + self.get_config_value('gazette_download_spider.cleanup.temp_file_extension' , '.tmp')
             if os.path.exists(temp_path):
                 os.remove(temp_path)
             
