@@ -159,49 +159,145 @@ def check_data_availability(config_loader, year, year_url, month=None, day=None,
           (f"-{day}" if day else "") + "...")
     
     try:
-        # Create a temporary crawler process for validation
-        temp_settings = get_project_settings()
-        scrapy_settings = config_loader.get_scrapy_settings()
+        import scrapy
+        from scrapy.http import Request
         
-        # Apply scrapy settings but force minimal logging for validation
-        for key, value in scrapy_settings.items():
-            temp_settings.set(key, value)
-        temp_settings.set('LOG_LEVEL', 'ERROR')  # Minimize output during validation
+        # Create a minimal spider just for validation
+        class QuietValidationSpider(scrapy.Spider):
+            name = 'validation_spider'
+            
+            def __init__(self, config=None, year=None, year_url=None, lang='all', month=None, day=None, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                self.spider_config = config or {}
+                self.year = year
+                self.year_url = year_url
+                self.lang = lang
+                self.month = month
+                self.day = day
+                self.found_gazettes = False
+                self.custom_settings = {
+                    'LOG_LEVEL': 'CRITICAL',  # Suppress all logs
+                    'DOWNLOAD_DELAY': 0,
+                    'ROBOTSTXT_OBEY': False,
+                    'USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+            
+            def start_requests(self):
+                """Start with the year URL"""
+                yield Request(
+                    url=self.year_url,
+                    callback=self.parse_year_page,
+                    dont_filter=True
+                )
+            
+            def parse_year_page(self, response):
+                """Parse year page to find month links"""
+                if self.month:
+                    # Look for specific month - avoid PDF links
+                    month_links = response.css(f"a[href*='{self.month}']:not([href$='.pdf'])::attr(href)").getall()
+                    if month_links:
+                        month_url = response.urljoin(month_links[0])
+                        yield Request(
+                            url=month_url,
+                            callback=self.parse_month_page,
+                            dont_filter=True
+                        )
+                    else:
+                        # Month not found, stop here
+                        self.crawler.engine.close_spider(self, 'month_not_found')
+                else:
+                    # Check any month for general availability - avoid PDF links
+                    month_links = response.css("a[href*='/']:not([href$='.pdf'])::attr(href)").getall()
+                    if month_links:
+                        # Just check the first month found
+                        month_url = response.urljoin(month_links[0])
+                        yield Request(
+                            url=month_url,
+                            callback=self.parse_month_page,
+                            dont_filter=True
+                        )
+            
+            def parse_month_page(self, response):
+                """Parse month page to check for gazettes"""
+                if self.day:
+                    # Look for specific day - avoid PDF links
+                    day_links = response.css(f"a[href*='{self.day}']:not([href$='.pdf'])::attr(href)").getall()
+                    if day_links:
+                        day_url = response.urljoin(day_links[0])
+                        yield Request(
+                            url=day_url,
+                            callback=self.check_gazette_page,
+                            dont_filter=True
+                        )
+                    else:
+                        # Day not found
+                        self.crawler.engine.close_spider(self, 'day_not_found')
+                else:
+                    # Check current page for gazettes
+                    yield Request(
+                        url=response.url,
+                        callback=self.check_gazette_page,
+                        dont_filter=True
+                    )
+            
+            def check_gazette_page(self, response):
+                """Check if this page has any gazette PDFs"""
+                # Check if we accidentally landed on a PDF file
+                content_type = response.headers.get('content-type', b'').decode('utf-8').lower()
+                if 'application/pdf' in content_type or response.url.endswith('.pdf'):
+                    # If we're on a PDF page, that means PDFs exist
+                    self.found_gazettes = True
+                    self.crawler.engine.close_spider(self, 'validation_complete')
+                    return
+                
+                try:
+                    # Look for PDF links only if this is an HTML page
+                    pdf_links = response.css("a[href$='.pdf'], a[href*='.pdf']").getall()
+                    
+                    if pdf_links:
+                        # Apply language filter if specified
+                        if self.lang != 'all':
+                            # Check if any PDFs match the language filter
+                            lang_patterns = {
+                                'en': ['english', 'en'],
+                                'si': ['sinhala', 'si', 'sinh'],
+                                'ta': ['tamil', 'ta', 'tam']
+                            }
+                            patterns = lang_patterns.get(self.lang.lower(), [])
+                            
+                            found_matching = False
+                            for link in pdf_links:
+                                link_text = link.lower()
+                                if any(pattern in link_text for pattern in patterns):
+                                    found_matching = True
+                                    break
+                            
+                            if found_matching:
+                                self.found_gazettes = True
+                        else:
+                            # No language filter, any PDF counts
+                            self.found_gazettes = True
+                
+                except Exception as e:
+                    # If CSS parsing fails, assume no gazettes found
+                    pass
+                
+                # Close spider after checking
+                self.crawler.engine.close_spider(self, 'validation_complete')
+        
+        # Create a silent crawler process
+        temp_settings = get_project_settings()
+        temp_settings.set('LOG_LEVEL', 'CRITICAL')
+        temp_settings.set('LOG_ENABLED', False)
+        temp_settings.set('DOWNLOAD_DELAY', 0)
+        temp_settings.set('ROBOTSTXT_OBEY', False)
         
         temp_process = CrawlerProcess(temp_settings)
-        download_config = config_loader.get_spider_config('gazette_download')
         
-        # Create a validation spider class that just checks for data existence
-        class ValidationSpider(GazetteDownloadSpider):
-            def __init__(self, config=None, *args, **kwargs):
-                self.spider_config = config or {}
-                self.found_gazettes = False
-                super().__init__(*args, **kwargs)
-            
-            def get_config_value(self, key_path, default=None):
-                """Get nested configuration value using dot notation"""
-                keys = key_path.split('.')
-                value = self.spider_config
-                for key in keys:
-                    if isinstance(value, dict) and key in value:
-                        value = value[key]
-                    else:
-                        return default
-                return value
-            
-            def parse_gazette_page(self, response):
-                """Override to just check if gazettes exist without downloading"""
-                # Call parent method but don't actually download
-                gazette_links = response.css("table tr td a[href*='.pdf']")
-                if gazette_links:
-                    self.found_gazettes = True
-                    # Stop the spider early since we found what we need
-                    self.crawler.engine.close_spider(self, 'validation_complete')
-        
-        # Run validation spider
-        validation_spider = temp_process.crawl(
-            ValidationSpider,
-            config=download_config,
+        # Run the validation spider
+        deferred = temp_process.crawl(
+            QuietValidationSpider,
+            config=config_loader.get_spider_config('gazette_download'),
             year=year,
             year_url=year_url,
             lang=lang,
@@ -361,11 +457,13 @@ def main():
             print(f"\n❌ Year '{args.year}' not found in available years.")
             sys.exit(1)
         
+        print('hi2')
         # Check if data is available for this month
         if not check_data_availability(config_loader, args.year, year_entry["link"], args.month, None, args.lang):
             print(f"\n❌ No gazettes found for {args.year}-{args.month}.")
             print("💡 Try checking available months or use a different month.")
             sys.exit(1)
+        
         
         print(f"\n📅 Starting download for {args.year}-{args.month} (entire month)...")
         process.crawl(
@@ -381,15 +479,10 @@ def main():
     elif args.year.lower() != "all":
         year_entry = get_year_entry(year_data, args.year)
         if not year_entry:
-            print(f"\n❌ Year '{args.year}' not found in available years.")
-            sys.exit(1)
-        
-        # Check if data is available for this year
-        if not check_data_availability(config_loader, args.year, year_entry["link"], None, None, args.lang):
-            print(f"\n❌ No gazettes found for year {args.year}.")
+            print(f"\n❌ No gazettes found for {args.year}")
             print("💡 Try checking available years or use a different year.")
             sys.exit(1)
-        
+                
         print(f"\n🔄 Starting download for year {args.year}...")
         process.crawl(
             ConfigurableGazetteDownloadSpider,
