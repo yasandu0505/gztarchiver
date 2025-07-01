@@ -1,6 +1,13 @@
-from gazette_tracker.processor import hello
-from gazette_tracker.processor import add_file
+import os
+from gazette_tracker.processor import find_gazette_pdf
 
-print(hello())
+BASE_DIR = os.path.expanduser("~/Desktop/gazette-archive")
 
-add_file()
+def main():
+    files = find_gazette_pdf(BASE_DIR)
+    print(f"Found {len(files)} gazettes....")
+    for path in files[:5]:
+        print("->>>", path )
+
+if __name__ == "__main__":
+    main()
