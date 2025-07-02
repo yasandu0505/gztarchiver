@@ -52,9 +52,11 @@ def get_meta_data(year, gazette_id, base_url):
     with open(csv_path, newline='', encoding='utf-8') as log_file:
         reader = csv.DictReader(log_file)
         for row in reader:
-            if row.get("gazette_id") == gazette_id:
+            if row.get("gazette_id") == gazette_id and row.get("status") == "SUCCESS":
                 return row
             
         
     print(f"⚠️ Gazette ID '{gazette_id}' not found in {csv_path}")
     return None
+
+
