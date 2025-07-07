@@ -59,4 +59,28 @@ def get_meta_data(year, gazette_id, base_url):
     print(f"⚠️ Gazette ID '{gazette_id}' not found in {csv_path}")
     return None
 
+def classify_gazette(description: str) -> str:
+    """
+    Classify a gazette entry as 'people', 'org', or 'unknown' based on its description.
+    """
+    desc = description.lower()
 
+    # People-related keywords
+    people_keywords = [
+        "appoint", "resign", "relieve", "removal", "assume office", "prime minister",
+        "minister", "state minister", "hon.", "mp", "w.e.f", "with effect from"
+    ]
+
+    # Org-related keywords
+    org_keywords = [
+        "assignment of subjects", "functions and duties", "duties and functions",
+        "gazette extraordinary", "correction notice", "departments", "statutory",
+        "institutions", "corporation", "delegate", "transfer of functions",
+        "reorganization", "amend", "amendment", "subjects and functions"
+    ]
+
+    if any(k in desc for k in people_keywords) and not any(k in desc for k in org_keywords):
+        return "people"
+    if any(k in desc for k in org_keywords) and not any(k in desc for k in people_keywords):
+        return "org"
+    return "unknown"
