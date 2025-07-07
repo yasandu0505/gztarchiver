@@ -147,6 +147,14 @@ For each year, the following log files are created:
 - **Invalid month**: `❌ Invalid month '13'. Must be between 01-12`
 - **Invalid day**: `❌ Invalid day '32'. Must be between 01-31`
 
+## 🧪 Test Scripts
+
+Run following on your root directory
+```bash - to test the archive structure and the pdf quality
+cd tests
+python3 test-files-and-pdf.py
+```
+
 ## 📟 Status
 
 🚧 Under Development
