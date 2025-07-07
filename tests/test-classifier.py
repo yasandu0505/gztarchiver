@@ -1,4 +1,4 @@
-from gazette_tracker.processor import classify_gazette
+from src.analyzer import classify_gazette
 
 test_samples = [
   {"description": "Presidential Secretariat - Appointment of Hon. Nimal Siripala de Silva member of Parliament as the Minister of Ports, Shipping & Aviation from August 02, 2022", "actual": "people"},

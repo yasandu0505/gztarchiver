@@ -1,4 +1,6 @@
-# This package will contain the spiders of your Scrapy project
-#
-# Please refer to the documentation for information on how to create and manage
-# your spiders.
+from .gazette_years import GazetteYearsSpider
+from .gazette_download import GazetteDownloadSpider
+
+__all__ = ["GazetteYearsSpider" , "GazetteDownloadSpider"]
+
+
