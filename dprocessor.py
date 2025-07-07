@@ -1,5 +1,5 @@
 import os
-from gazette_tracker.processor import find_gazette_pdf, extract_year_and_id, get_meta_data, classify_gazette
+from src.analyzer import find_gazette_pdf, extract_year_and_id, get_meta_data, classify_gazette
 
 
 BASE_DIR = os.path.expanduser("~/Desktop/gazette-archive")

@@ -1,3 +1,7 @@
+"""
+Gazette file analysis and metadata extraction.
+"""
+
 import os
 import csv
 
