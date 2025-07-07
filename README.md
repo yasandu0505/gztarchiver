@@ -155,6 +155,9 @@ cd tests
 python3 test-files-and-pdf.py
 ```
 
+You'll see this if passed -> '✅ Archive structure and all PDFs are valid!'
+You'll see this if failed -> '❌ Issues found in the archive. See details above.'
+
 ## 📟 Status
 
 🚧 Under Development
