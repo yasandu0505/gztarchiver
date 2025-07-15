@@ -2,7 +2,7 @@ from pathlib import Path
 import yaml
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
-from document_scraper.document_scraper.spiders.years_spider import YearsSpider
+from document_scraper.document_scraper import YearsSpider
 
 # Load config
 with open("config.yaml") as f:
