@@ -31,8 +31,13 @@ def main():
     args = parse_args()
     kind = identify_input_kind(args)
 
-    if kind == "invalid":
+    if kind == "invalid-input":
         print("Invalid input! --year and --lang are required at minimum.")
+        sys.exit(1)
+        
+    if kind == "invalid-lang-input":
+        print("Please enter supported language")
+        print("Supported languages: en (English), si (Sinhala), ta (Tamil)")
         sys.exit(1)
 
     # Project root
