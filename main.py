@@ -6,9 +6,20 @@ from pathlib import Path
 import yaml
 import json
 import sys
+import logging
+from scrapy.utils.log import configure_logging
 
 def scrape_years_metadata(url, output_path):
-    process = CrawlerProcess(get_project_settings())
+    # Suppress all Scrapy logs
+    configure_logging(install_root_handler=False)
+    logging.getLogger('scrapy').setLevel(logging.ERROR)
+    
+    # Setup crawler
+    settings = get_project_settings()
+    settings.set('LOG_LEVEL', 'ERROR')
+    
+    # Start crawler
+    process = CrawlerProcess(settings=settings)
     process.crawl(YearsSpider, url=url, output_path=str(output_path))
     process.start()
 
