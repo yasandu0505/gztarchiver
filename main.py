@@ -1,23 +1,58 @@
-from pathlib import Path
-import yaml
+from src.cmd import parse_args, identify_input_kind
 from scrapy.crawler import CrawlerProcess
 from scrapy.utils.project import get_project_settings
 from document_scraper.document_scraper import YearsSpider
+from pathlib import Path
+import yaml
+import json
+import sys
 
-# Load config
-with open("config.yaml") as f:
-    config = yaml.safe_load(f)
+def scrape_years_metadata(url, output_path):
+    process = CrawlerProcess(get_project_settings())
+    process.crawl(YearsSpider, url=url, output_path=str(output_path))
+    process.start()
 
-# Get the project root
-project_root = Path(__file__).parent
+def load_scraped_years(json_path):
+    with open(json_path, "r", encoding="utf-8") as f:
+        return [entry["year"] for entry in json.load(f)]
 
-# Set the years.json storage location
-output_path = project_root / config["output"]["years_json"]
+def main():
+    args = parse_args()
+    kind = identify_input_kind(args)
 
-# Ensure the parent directory exists
-output_path.parent.mkdir(parents=True, exist_ok=True)
+    if kind == "invalid":
+        print("Invalid input! --year and --lang are required at minimum.")
+        sys.exit(1)
 
-# Start crawler
-process = CrawlerProcess(get_project_settings())
-process.crawl(YearsSpider, url=config["scrape"]["url"], output_path=str(output_path))
-process.start()
+    # Project root
+    project_root = Path(__file__).parent
+
+    # Load config.yaml
+    with open(project_root / "config.yaml") as f:
+        config = yaml.safe_load(f)
+
+    # Resolve years.json path
+    output_path = project_root / config["output"]["years_json"]
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Step 1: Scrape latest year links and save to years.json
+    print("Checking for updates from the website...")
+    scrape_years_metadata(config["scrape"]["url"], output_path)
+    print(f"Updated year metadata saved to {output_path}")
+
+    # Step 2: Validate CLI --year against scraped data
+    scraped_years = load_scraped_years(output_path)
+    if str(args.year) not in scraped_years:
+        print(f"Error: Year '{args.year}' is not available in scraped data.")
+        print(f"Available years: {', '.join(scraped_years)}")
+        sys.exit(1)
+
+    # Step 3: Continue processing with valid input
+    print(f"✅ Year '{args.year}' is valid.")
+    print(f"Input kind: {kind}")
+    print(f"Parameters: year={args.year}, month={args.month}, day={args.day}, lang={args.lang}")
+
+    # : Call the correct spider/downloader here based on input kind
+
+if __name__ == "__main__":
+    main()
