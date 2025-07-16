@@ -81,22 +81,170 @@ def main():
     print("\n\n\n\n\n")
     print(doc_metadata)
     
-    filtered_doc_metadata = filter_doc_metadata(kind)
+
+    filtered_doc_metadata, status = filter_doc_metadata(
+        doc_metadata, kind, 
+        year=str(args.year), 
+        month=str(args.month), 
+        date=str(args.day)
+        )
+    
+    print(filtered_doc_metadata)
+    
+    print("\n\n\n\n\n\n\n")
+    print(status)
+    for doc in filtered_doc_metadata:
+        print(doc['date'])
     
     
-    # if kind == "year-lang":
-    #     print("no filteration needed...")
-        
-    # elif kind == "year-month-lang":
-    #     print("filter the related month data...")
     
-    # elif kind == "year-month-day-lang":
-    #     print("filter with docs with the exact date....")
+    
+    
         
     # : Call the correct downloader here based on input kind   
     
     
+# # Test dataset - sample document metadata
+# test_doc_metadata = [
+#     {
+#         'doc_id': '2208-26',
+#         'date': '2020-12-31',
+#         'description': 'Central Bank of Sri Lanka Balance Sheet as at 30th November 2020 (Reserved)',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2020/12/2208-26_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2208-27',
+#         'date': '2020-12-31',
+#         'description': 'Consumer Affairs Authority - Directs for Hand Sanitizers',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2020/12/2208-27_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2208-28',
+#         'date': '2020-12-15',
+#         'description': 'Land Acquisition - Ulpothakumbura, Kandy Four Gravets D/S Division, Kandy District',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2020/12/2208-28_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2208-29',
+#         'date': '2020-11-30',
+#         'description': 'Department of Local Government - Uva Province - The meeting of the Haldummulla Pradeshiya Sabha',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2020/11/2208-29_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2208-30',
+#         'date': '2020-11-15',
+#         'description': 'Land Acquisition - Basnagoda, Ruwanwella D/S Division, Kegalle District',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2020/11/2208-30_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2209-01',
+#         'date': '2021-01-05',
+#         'description': 'Ministry of Health - COVID-19 Guidelines Update',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2021/01/2209-01_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2209-02',
+#         'date': '2021-01-15',
+#         'description': 'Department of Education - School Reopening Guidelines',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2021/01/2209-02_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2209-03',
+#         'date': '2021-02-01',
+#         'description': 'Treasury - Budget Amendment Notice',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2021/02/2209-03_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2209-04',
+#         'date': '2019-12-31',
+#         'description': 'Year End Financial Report 2019',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2019/12/2209-04_E.pdf',
+#         'availability': 'Available'
+#     },
+#     {
+#         'doc_id': '2209-05',
+#         'date': '2019-12-01',
+#         'description': 'December 2019 Policy Update',
+#         'download_url': 'https://documents.gov.lk/view/extra-gazettes/2019/12/2209-05_E.pdf',
+#         'availability': 'Available'
+#     }
+# ]
+
+# # Test cases
+# def test_filter_function():
+#     print("=" * 50)
+#     print("TESTING DOCUMENT METADATA FILTER FUNCTION")
+#     print("=" * 50)
     
+#     print(f"Total documents in test dataset: {len(test_doc_metadata)}")
+#     print()
+    
+#     # Test 1: year-lang filtering (should return all documents)
+#     print("TEST 1: year-lang filtering")
+#     print("-" * 30)
+#     result1 = filter_doc_metadata(test_doc_metadata, "year-lang", year="2020", month=None, date=None)
+#     print(f"Result: {len(result1)} documents returned (should be all {len(test_doc_metadata)} documents)")
+#     print()
+    
+#     # Test 2: year-month-lang filtering (December 2020)
+#     print("TEST 2: year-month-lang filtering (December 2020)")
+#     print("-" * 30)
+#     result2 = filter_doc_metadata(test_doc_metadata, "year-month-lang", year="2020", month="12", date=None)
+#     print(f"Result: {len(result2)} documents found for December 2020")
+#     for doc in result2:
+#         print(f"  - {doc['doc_id']}: {doc['date']} - {doc['description'][:50]}...")
+#     print()
+    
+#     # Test 3: year-month-lang filtering (November 2020)
+#     print("TEST 3: year-month-lang filtering (November 2020)")
+#     print("-" * 30)
+#     result3 = filter_doc_metadata(test_doc_metadata, "year-month-lang", year="2020", month="11", date=None)
+#     print(f"Result: {len(result3)} documents found for November 2020")
+#     for doc in result3:
+#         print(f"  - {doc['doc_id']}: {doc['date']} - {doc['description'][:50]}...")
+#     print()
+    
+#     # Test 4: year-month-day-lang filtering (December 31, 2020)
+#     print("TEST 4: year-month-day-lang filtering (December 31, 2020)")
+#     print("-" * 30)
+#     result4 = filter_doc_metadata(test_doc_metadata, "year-month-day-lang", year="2020", month="12", date="31")
+#     print(f"Result: {len(result4)} documents found for December 31, 2020")
+#     for doc in result4:
+#         print(f"  - {doc['doc_id']}: {doc['date']} - {doc['description'][:50]}...")
+#     print()
+    
+#     # Test 5: year-month-day-lang filtering (January 5, 2021)
+#     print("TEST 5: year-month-day-lang filtering (January 5, 2021)")
+#     print("-" * 30)
+#     result5 = filter_doc_metadata(test_doc_metadata, "year-month-day-lang", year="2021", month="1", date="5")
+#     print(f"Result: {len(result5)} documents found for January 5, 2021")
+#     for doc in result5:
+#         print(f"  - {doc['doc_id']}: {doc['date']} - {doc['description'][:50]}...")
+#     print()
+    
+#     # Test 6: No results case
+#     print("TEST 6: No results case (March 2020)")
+#     print("-" * 30)
+#     result6 = filter_doc_metadata(test_doc_metadata, "year-month-lang", year="2020", month="3", date=None)
+#     print(f"Result: {len(result6)} documents found for March 2020 (should be 0)")
+#     print()
+    
+#     # Test 7: Single digit month/date handling
+#     print("TEST 7: Single digit month/date handling (January 2021)")
+#     print("-" * 30)
+#     result7 = filter_doc_metadata(test_doc_metadata, "year-month-lang", year="2021", month="1", date=None)
+#     print(f"Result: {len(result7)} documents found for January 2021")
+#     for doc in result7:
+#         print(f"  - {doc['doc_id']}: {doc['date']} - {doc['description'][:50]}...")
+#     print()
 
 
 
@@ -111,6 +259,7 @@ def main():
 if __name__ == "__main__":
     main()
     # test()
+    # test_filter_function()
 
 
 

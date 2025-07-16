@@ -25,7 +25,7 @@ class DocMetadataSpider(scrapy.Spider):
 
         rows = response.css("table.table-bordered tbody tr")
         print("\n--- Gazette Metadata ---\n")
-        for row in rows[:5]:
+        for row in rows:
             gazette_number = row.css("td:nth-child(1)::text").get().strip()
             gazette_date = row.css("td:nth-child(2)::text").get().strip()
             description = row.css("td:nth-child(3)::text").get().strip()
