@@ -4,10 +4,9 @@ from urllib.parse import urljoin
 class DocMetadataSpider(scrapy.Spider):
     name = "doc_metadata_spider"
 
-    def __init__(self, url=None, lang="en", output_path=None, **kwargs):
+    def __init__(self, url=None, lang=None, **kwargs):
         self.start_urls = [url]
         self.lang = lang.lower()
-        self.output_path = output_path
         super().__init__(**kwargs)
 
     def parse(self, response):

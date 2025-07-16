@@ -67,7 +67,7 @@ def main():
         sys.exit(1)
         
     # Step 4: Scrape the table metadata for the relevant year URL
-    process.crawl(DocMetadataSpider, url=year_url, lang=str(args.lang), output_path=None)
+    process.crawl(DocMetadataSpider, url=year_url, lang=str(args.lang))
  
     # Srat crawling
     process.start()
