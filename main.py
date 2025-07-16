@@ -54,6 +54,7 @@ def main():
         print(f"✅ Year link: {year_url}")
     else:
         print("❌ Year not found in metadata.")
+        sys.exit(1)
 
     # : Call the correct spider/downloader here based on input kind
 
