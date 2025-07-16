@@ -4,6 +4,7 @@ from document_scraper.document_scraper import YearsSpider
 import json
 import logging
 from scrapy.utils.log import configure_logging
+from typing import Optional
 
 def scrape_years_metadata(url, output_path):
     # Suppress all Scrapy logs
@@ -22,3 +23,13 @@ def scrape_years_metadata(url, output_path):
 def load_scraped_years(json_path):
     with open(json_path, "r", encoding="utf-8") as f:
         return [entry["year"] for entry in json.load(f)]
+    
+def get_year_link(year: str, json_path) -> Optional[str]:
+    with open(json_path, "r", encoding="utf-8") as f:
+        years = json.load(f)
+
+    for entry in years:
+        if entry.get("year") == str(year):
+            return entry.get("link")
+    
+    return None

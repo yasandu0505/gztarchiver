@@ -2,7 +2,7 @@ from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 import sys
-from src.utils import scrape_years_metadata, load_scraped_years
+from src.utils import scrape_years_metadata, load_scraped_years, get_year_link
 
 def main():
     args = parse_args()
@@ -44,6 +44,13 @@ def main():
     print(f"✅ Year '{args.year}' is valid.")
     print(f"Input kind: {kind}")
     print(f"Parameters: year={args.year}, month={args.month}, day={args.day}, lang={args.lang}")
+    
+    year_url = get_year_link(args.year, output_path)
+    
+    if year_url:
+        print(f"✅ Year link: {year_url}")
+    else:
+        print("❌ Year not found in metadata.")
 
     # : Call the correct spider/downloader here based on input kind
 
