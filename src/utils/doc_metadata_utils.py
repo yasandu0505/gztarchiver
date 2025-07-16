@@ -25,7 +25,7 @@ def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
             if doc_date.startswith(target_year_month):  # e.g., "2020-12-31" starts with "2020-12"
                 filtered_docs.append(doc)
             else:
-                status = "not found...."
+                status = f"No document found on : {target_year_month}"
         
         return filtered_docs, status
     
@@ -42,8 +42,10 @@ def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
             doc_date = doc.get('date', '')
             if doc_date == target_date:
                 filtered_docs.append(doc)
-                
-        return filtered_docs
+            else:
+                status = f"No document found on : {target_date}"
+        
+        return filtered_docs, status
     
     else:
         print(f"Unknown filter kind: {kind}")
