@@ -2,7 +2,7 @@ from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 import sys
-from src.utils import load_years_metadata, get_year_link, hide_logs
+from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata
 from scrapy.crawler import CrawlerProcess
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
@@ -76,10 +76,26 @@ def main():
     # Srat crawling
     process.start()
     
+    # Step 5: Filter the metadata based on the input kind
+    doc_metadata = load_doc_metadata_file(output_path_doc_metadata)
+    print("\n\n\n\n\n")
+    print(doc_metadata)
+    
+    filtered_doc_metadata = filter_doc_metadata(kind)
     
     
+    # if kind == "year-lang":
+    #     print("no filteration needed...")
+        
+    # elif kind == "year-month-lang":
+    #     print("filter the related month data...")
     
-    # : Call the correct spider/downloader here based on input kind   
+    # elif kind == "year-month-day-lang":
+    #     print("filter with docs with the exact date....")
+        
+    # : Call the correct downloader here based on input kind   
+    
+    
     
 
 
@@ -95,7 +111,6 @@ def main():
 if __name__ == "__main__":
     main()
     # test()
-
 
 
 
