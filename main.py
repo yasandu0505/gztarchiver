@@ -36,6 +36,10 @@ def main():
     # Resolve years.json path
     output_path = project_root / config["output"]["years_json"]
     output_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Resolve doc_metadata.json path
+    output_path_doc_metadata = project_root / config["output"]["doc_metadata_json"]
+    output_path_doc_metadata.parent.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Scrape latest year links and save to years.json
     print("Checking for updates from the website...")    
@@ -67,10 +71,11 @@ def main():
         sys.exit(1)
         
     # Step 4: Scrape the table metadata for the relevant year URL
-    process.crawl(DocMetadataSpider, url=year_url, lang=str(args.lang))
- 
+    process.crawl(DocMetadataSpider, url=year_url, lang=str(args.lang), output_path=str(output_path_doc_metadata))
+    
     # Srat crawling
     process.start()
+    
     
     
     

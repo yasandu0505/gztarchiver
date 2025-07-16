@@ -1,15 +1,20 @@
 import scrapy
 from urllib.parse import urljoin
+import os
+import json
 
 class DocMetadataSpider(scrapy.Spider):
     name = "doc_metadata_spider"
 
-    def __init__(self, url=None, lang=None, **kwargs):
+    def __init__(self, url=None, lang=None,output_path=None, **kwargs):
         self.start_urls = [url]
         self.lang = lang.lower()
+        self.output_path = output_path
         super().__init__(**kwargs)
 
     def parse(self, response):
+        all_table_metadata = []
+    
         lang_map = {
             "en": ("English", "btn-primary"),
             "si": ("Sinhala", "btn-secondary"),
@@ -20,7 +25,7 @@ class DocMetadataSpider(scrapy.Spider):
 
         rows = response.css("table.table-bordered tbody tr")
         print("\n--- Gazette Metadata ---\n")
-        for row in rows:
+        for row in rows[:5]:
             gazette_number = row.css("td:nth-child(1)::text").get().strip()
             gazette_date = row.css("td:nth-child(2)::text").get().strip()
             description = row.css("td:nth-child(3)::text").get().strip()
@@ -37,6 +42,14 @@ class DocMetadataSpider(scrapy.Spider):
                 if href:
                     download_url = urljoin(response.url, href)
                     availability = "Available"
+                    
+            table_metadata = {
+                "doc_id": doc_id,
+                "date": gazette_date,
+                "description": description,
+                "download_url": download_url,
+                "availability": availability
+            }
 
             print(f"📄 Gazette ID: {doc_id}")
             print(f"📅 Date      : {gazette_date}")
@@ -44,3 +57,15 @@ class DocMetadataSpider(scrapy.Spider):
             print(f"🌐 Link ({lang_label}): {download_url}")
             print(f"✅ Available : {availability}")
             print("-" * 50)
+            
+            all_table_metadata.append(table_metadata)
+        
+        os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
+        with open(self.output_path, "w") as f:
+            json.dump(all_table_metadata, f, indent=2)
+        print("Data saved to doc_metadata.json") 
+        
+        print("📦 All Gazette Metadata:")    
+        print(all_table_metadata)
+
+        
