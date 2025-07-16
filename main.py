@@ -2,7 +2,7 @@ from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 import sys
-from src.utils import scrape_years_metadata, load_scraped_years, get_year_link
+from src.utils import scrape_years_metadata, load_years_metadata, get_year_link
 
 def main():
     args = parse_args()
@@ -34,7 +34,9 @@ def main():
     print(f"Updated year metadata saved to {output_path}")
 
     # Step 2: Validate CLI --year against scraped data
-    scraped_years = load_scraped_years(output_path)
+    metadata = load_years_metadata(output_path)
+    scraped_years = [entry["year"] for entry in metadata]
+    print(scraped_years)
     if str(args.year) not in scraped_years:
         print(f"Error: Year '{args.year}' is not available in scraped data.")
         print(f"Available years: {', '.join(scraped_years)}")
@@ -45,7 +47,8 @@ def main():
     print(f"Input kind: {kind}")
     print(f"Parameters: year={args.year}, month={args.month}, day={args.day}, lang={args.lang}")
     
-    year_url = get_year_link(args.year, output_path)
+    # Get the URL corresponding to the relevant year
+    year_url = get_year_link(args.year, metadata)
     
     if year_url:
         print(f"✅ Year link: {year_url}")
