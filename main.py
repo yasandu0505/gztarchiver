@@ -1,25 +1,16 @@
 from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
-import logging
 import sys
-from src.utils import scrape_years_metadata, load_years_metadata, get_year_link, scrape_doc_table_metadata
-from scrapy.utils.log import configure_logging
+from src.utils import load_years_metadata, get_year_link, hide_logs
 from scrapy.crawler import CrawlerProcess
-from scrapy.utils.project import get_project_settings
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
 
 def main():
-
-    # Suppress all Scrapy logs
-    configure_logging(install_root_handler=False)
-    logging.getLogger('scrapy').setLevel(logging.ERROR)
-
-    # Setup crawler
-    settings = get_project_settings()
-    settings.set('LOG_LEVEL', 'ERROR')
-
+    # Hide logs (scrapy)
+    settings = hide_logs()
+    
     # Initiate crawling process
     process = CrawlerProcess(settings=settings)
     
@@ -98,6 +89,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # test()
 
 
 
