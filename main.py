@@ -1,10 +1,28 @@
 from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
+import logging
 import sys
-from src.utils import scrape_years_metadata, load_years_metadata, get_year_link
+from src.utils import scrape_years_metadata, load_years_metadata, get_year_link, scrape_doc_table_metadata
+from scrapy.utils.log import configure_logging
+from scrapy.crawler import CrawlerProcess
+from scrapy.utils.project import get_project_settings
+from document_scraper.document_scraper import YearsSpider
+from document_scraper.document_scraper.spiders import DocMetadataSpider
 
 def main():
+
+    # Suppress all Scrapy logs
+    configure_logging(install_root_handler=False)
+    logging.getLogger('scrapy').setLevel(logging.ERROR)
+
+    # Setup crawler
+    settings = get_project_settings()
+    settings.set('LOG_LEVEL', 'ERROR')
+
+    # Initiate crawling process
+    process = CrawlerProcess(settings=settings)
+    
     args = parse_args()
     kind = identify_input_kind(args)
 
@@ -29,11 +47,12 @@ def main():
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     # Step 1: Scrape latest year links and save to years.json
-    print("Checking for updates from the website...")
-    scrape_years_metadata(config["scrape"]["url"], output_path)
+    print("Checking for updates from the website...")    
+    process.crawl(YearsSpider, url=config["scrape"]["url"], output_path=str(output_path))
     print(f"Updated year metadata saved to {output_path}")
-
-    # Step 2: Validate CLI --year against scraped data
+    
+    
+    # Step 2: Validaate CLI --year against scraped data
     metadata = load_years_metadata(output_path)
     scraped_years = [entry["year"] for entry in metadata]
     print(scraped_years)
@@ -55,8 +74,68 @@ def main():
     else:
         print("❌ Year not found in metadata.")
         sys.exit(1)
+        
+    # Step 4: Scrape the table metadata for the relevant year URL
+    process.crawl(DocMetadataSpider, url=year_url, lang=str(args.lang), output_path=None)
+ 
+    # Srat crawling
+    process.start()
+    
+    
+    
+    # : Call the correct spider/downloader here based on input kind   
+    
 
-    # : Call the correct spider/downloader here based on input kind
+
+
+
+# def test():
+#     scrape_doc_table_metadata(
+#         url="https://documents.gov.lk/view/extra-gazettes/egz_2010.html",
+#         lang="en",  # or "en", "ta"
+#         output_path=None
+#     )
 
 if __name__ == "__main__":
     main()
+
+
+
+
+
+
+
+
+
+# <table class="table table-bordered table-striped table-hover">
+#         <thead class="table-dark">
+#           <tr>
+#             <th>Gazettes Number</th>
+#             <th class="date-column">Date</th>
+#             <th>Description</th>
+#             <th>Download</th>
+#           </tr>
+#         </thead>
+#         <tbody>
+#           <tr>
+#             <td>2417/14</td>
+#             <td class="date-column">2024-12-31</td>
+#             <td>Minister of Transport Highways Ports and Civil Aviation - Merchant Shipping Act. No.52 of 1971 Merchant Shipping (Non. Convention Vessel) Regulations No. 01 of 2024 </td>
+#             <td>
+#               <a href="2024/12/2417-14_E.pdf" target="_blank" rel="noopener noreferrer"><button class="btn btn-primary btn-sm">English</button></a>
+#               <a href="2024/12/2417-14_S.pdf" target="_blank" rel="noopener noreferrer"><button class="btn btn-secondary btn-sm">Sinhala</button></a>
+#               <a href="2024/12/2417-14_T.pdf" target="_blank" rel="noopener noreferrer"><button class="btn btn-success btn-sm">Tamil</button></a>
+#             </td>
+#           </tr>
+#            <tr>
+#             <td>2416/34</td>
+#             <td class="date-column">2024-12-27</td>
+#             <td>Land Title Settlement Dept. - Akbapura, Medirigiriya D/S Division, Polonnaruwa District - Cad. Map No. 120061 (24/0856)</td>
+#             <td>
+#               <button class="btn btn-primary btn-sm" disabled>English</button>
+#               <button class="btn btn-secondary btn-sm" disabled>Sinhala</button>
+#               <button class="btn btn-success btn-sm" disabled>Tamil</button>
+#             </td>
+#           </tr>
+#           </tbody>
+# </table>
