@@ -8,7 +8,8 @@ def load_doc_metadata_file(json_path: str) -> List[Dict[str, str]]:
 def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
     
     if kind == "year-lang":
-        return doc_metadata
+        status = f"Document found on : {year}"
+        return doc_metadata, status
     
     elif kind == "year-month-lang":
         if not year or not month:

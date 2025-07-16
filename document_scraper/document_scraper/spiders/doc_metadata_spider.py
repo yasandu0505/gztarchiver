@@ -64,8 +64,6 @@ class DocMetadataSpider(scrapy.Spider):
         with open(self.output_path, "w") as f:
             json.dump(all_table_metadata, f, indent=2)
         print("Data saved to doc_metadata.json") 
-        
-        print("📦 All Gazette Metadata:")    
-        print(all_table_metadata)
+
 
         

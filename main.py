@@ -73,14 +73,11 @@ def main():
     # Step 4: Scrape the table metadata for the relevant year URL
     process.crawl(DocMetadataSpider, url=year_url, lang=str(args.lang), output_path=str(output_path_doc_metadata))
     
-    # Srat crawling
+    # Start crawling
     process.start()
     
     # Step 5: Filter the metadata based on the input kind
     doc_metadata = load_doc_metadata_file(output_path_doc_metadata)
-    print("\n\n\n\n\n")
-    print(doc_metadata)
-    
 
     filtered_doc_metadata, status = filter_doc_metadata(
         doc_metadata, kind, 
@@ -89,12 +86,13 @@ def main():
         date=str(args.day)
         )
     
-    print(filtered_doc_metadata)
-    
-    print("\n\n\n\n\n\n\n")
     print(status)
     for doc in filtered_doc_metadata:
-        print(doc['date'])
+        print(doc['download_url'])
+        
+    
+        
+    
     
     
     
