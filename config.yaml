@@ -4,3 +4,6 @@ scrape:
 output:
   years_json: "meta_data/years.json"
   doc_metadata_json: "meta_data/doc_metadata.json"
+
+archive:
+  archive_location: "~/Desktop/doc-archive"

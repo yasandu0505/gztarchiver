@@ -2,7 +2,7 @@ from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 import sys
-from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata
+from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure
 from scrapy.crawler import CrawlerProcess
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
@@ -88,7 +88,13 @@ def main():
     
     print(status)
     for doc in filtered_doc_metadata:
-        print(doc['download_url'])
+        print(doc)
+        
+    # Step 6: Create the folder structure for the filtered data
+    archive_location = config["archive"]["archive_location"]
+    
+    create_folder_structure(archive_location, filtered_doc_metadata)
+    
         
     
         
