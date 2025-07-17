@@ -3,9 +3,12 @@ from pathlib import Path
 import yaml
 import sys
 from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure
+from src.download import download_docs
 from scrapy.crawler import CrawlerProcess
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
+from document_scraper.document_scraper.spiders import PDFDownloaderSpider
+
 
 def main():
     # Hide logs (scrapy)
@@ -46,7 +49,6 @@ def main():
     process.crawl(YearsSpider, url=config["scrape"]["url"], output_path=str(output_path))
     print(f"Updated year metadata saved to {output_path}")
     
-    
     # Step 2: Validaate CLI --year against scraped data
     metadata = load_years_metadata(output_path)
     scraped_years = [entry["year"] for entry in metadata]
@@ -73,9 +75,6 @@ def main():
     # Step 4: Scrape the table metadata for the relevant year URL
     process.crawl(DocMetadataSpider, url=year_url, lang=str(args.lang), output_path=str(output_path_doc_metadata))
     
-    # Start crawling
-    process.start()
-    
     # Step 5: Filter the metadata based on the input kind
     doc_metadata = load_doc_metadata_file(output_path_doc_metadata)
 
@@ -90,18 +89,17 @@ def main():
     for doc in filtered_doc_metadata:
         print(doc)
         
-    # Step 6: Create the folder structure for the filtered data
+    # Step 6: Create the folder structure for the filtered data and get download metadata
     archive_location = config["archive"]["archive_location"]
+    all_download_metadata = create_folder_structure(archive_location, filtered_doc_metadata)
+    print(all_download_metadata)
     
-    create_folder_structure(archive_location, filtered_doc_metadata)
+    # Step 7: Download the documents
+    process.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
+    # download_docs(all_download_metadata)
     
-        
-    
-        
-    
-    
-    
-    
+    # Start crawling
+    process.start()
     
     
         

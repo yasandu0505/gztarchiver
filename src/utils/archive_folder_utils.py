@@ -5,6 +5,8 @@ def create_folder_structure(archive_location, filtered_doc_metadata):
     
     base_path = Path(archive_location).expanduser()
     
+    all_download_metadata = []
+    
     for doc in filtered_doc_metadata:
         doc_id = doc.get("doc_id")
         date_str = doc.get("date")
@@ -22,6 +24,29 @@ def create_folder_structure(archive_location, filtered_doc_metadata):
         folder_path = base_path / year / month / day / doc_id
         folder_path.mkdir(parents=True, exist_ok=True)
 
+        # Determine language from URL
+        if "_E.pdf" in url:
+            lang_suffix = "english"
+        elif "_S.pdf" in url:
+            lang_suffix = "sinhala"
+        elif "_T.pdf" in url:
+            lang_suffix = "tamil"
+        else:
+            lang_suffix = "unknown"
+
+        file_name = f"{doc_id}_{lang_suffix}.pdf"
+        file_path = folder_path / file_name       
+        
+        download_metadata = {
+            "doc_id": doc_id,
+            "download_url": url,
+            "file_name" : file_name,
+            "file_path" : file_path,
+            "availability" : availability
+        }
+        
+        all_download_metadata.append(download_metadata)
+        
         # If unavailable, save metadata to unavailable.txt
         if availability != "Available" or url == "N/A":
             unavailable_path = folder_path / "unavailable.txt"
@@ -29,18 +54,8 @@ def create_folder_structure(archive_location, filtered_doc_metadata):
                 json.dump(doc, f, ensure_ascii=False, indent=2)
             print(f"📄 Unavailable logged: {unavailable_path}")
             continue
-    return
+ 
+    
+    return all_download_metadata
 
 
-        # # Determine language from URL
-        # if "_E.pdf" in url:
-        #     lang_suffix = "english"
-        # elif "_S.pdf" in url:
-        #     lang_suffix = "sinhala"
-        # elif "_T.pdf" in url:
-        #     lang_suffix = "tamil"
-        # else:
-        #     lang_suffix = "unknown"
-
-        # filename = f"{doc_id}_{lang_suffix}.pdf"
-        # file_path = folder_path / filename
