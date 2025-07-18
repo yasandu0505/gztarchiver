@@ -6,7 +6,7 @@ def load_doc_metadata_file(json_path: str) -> List[Dict[str, str]]:
         return json.load(f)
 
 def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
-    
+    # TODO : use meaninfull variable name to kind
     if kind == "year-lang":
         status = f"Document found on : {year}"
         return doc_metadata, status

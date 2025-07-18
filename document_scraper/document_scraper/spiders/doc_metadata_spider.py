@@ -24,7 +24,6 @@ class DocMetadataSpider(scrapy.Spider):
         lang_label, lang_class = lang_map.get(self.lang, ("English", "btn-primary"))
 
         rows = response.css("table.table-bordered tbody tr")
-        print("\n--- Gazette Metadata ---\n")
         for row in rows:
             gazette_number = row.css("td:nth-child(1)::text").get().strip()
             gazette_date = row.css("td:nth-child(2)::text").get().strip()
@@ -50,16 +49,9 @@ class DocMetadataSpider(scrapy.Spider):
                 "download_url": download_url,
                 "availability": availability
             }
-
-            print(f"📄 Gazette ID: {doc_id}")
-            print(f"📅 Date      : {gazette_date}")
-            print(f"📝 Description: {description}")
-            print(f"🌐 Link ({lang_label}): {download_url}")
-            print(f"✅ Available : {availability}")
-            print("-" * 50)
             
             all_table_metadata.append(table_metadata)
-        
+        # TODO: This function should consider
         os.makedirs(os.path.dirname(self.output_path), exist_ok=True)
         with open(self.output_path, "w") as f:
             json.dump(all_table_metadata, f, indent=2)
