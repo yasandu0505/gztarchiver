@@ -2,7 +2,7 @@ from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 import sys
-from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud
+from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results
 from scrapy.crawler import CrawlerProcess
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
@@ -113,11 +113,11 @@ def main():
     
     
     # Step 7: Download the documents
-    # if all_download_metadata:
-    #     process.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
-    # else:
-    #     print("Byeeeeeeeee")
-    #     sys.exit(1)
+    if all_download_metadata:
+        process.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
+    else:
+        print("Byeeeeeeeee")
+        sys.exit(1)
         
     # Start crawling
     process.start()
@@ -147,8 +147,30 @@ def main():
 #         max_retries=3,
 #         delay_between_uploads=1
 # )
+
+    pdf_only_metadata = filter_pdf_only(upload_metadata)
     
+    results = upload_local_documents_to_gdrive(
+        service, 
+        pdf_only_metadata,
+        max_retries=3,
+        delay_between_uploads=1
+    )
     
+    save_upload_results(results, "upload_results.json")
+    
+    # Access specific results
+    print(f"Successful uploads: {results['successful_uploads']}")
+    print(f"Failed uploads: {results['failed_uploads']}")
+
+    # Get list of successful uploads with their Google Drive file IDs
+    successful_docs = [
+        detail for detail in results['upload_details'] 
+        if detail['status'] == 'success'
+    ]
+
+    for doc in successful_docs:
+        print(f"✅ {doc['doc_id']}: {doc['gdrive_file_id']}")
     
     # : Call the correct downloader here based on input kind   
     

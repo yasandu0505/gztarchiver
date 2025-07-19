@@ -2,7 +2,12 @@ import json
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import time
-import pandas as pd
+import os
+import time
+from googleapiclient.http import MediaFileUpload
+from googleapiclient.errors import HttpError
+import json
+from pathlib import Path
 import os
 import time
 from googleapiclient.http import MediaFileUpload
@@ -291,14 +296,15 @@ for item in upload_metadata:
     print(f"Doc: {item['doc_id']} -> Folder ID: {item['gdrive_folder_id']}")
 """
 
-def upload_local_documents_to_gdrive(service, upload_metadata, archived_csv_path, max_retries=3, delay_between_uploads=1):
+
+def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, delay_between_uploads=1):
     """
-    Upload locally downloaded documents to Google Drive using archived.csv file
+    Upload locally downloaded documents to Google Drive using local_path from upload metadata
     
     Args:
         service: Google Drive API service object
         upload_metadata: List of upload metadata from create_folder_structure_on_cloud()
-        archived_csv_path: Path to the archived.csv file containing local file paths
+                        Each item should have 'local_path' field
         max_retries: Maximum number of retry attempts for failed uploads
         delay_between_uploads: Delay in seconds between uploads to avoid rate limits
     
@@ -318,25 +324,6 @@ def upload_local_documents_to_gdrive(service, upload_metadata, archived_csv_path
     }
     
     print(f"🚀 Starting local document upload process for {len(upload_metadata)} items...")
-    print(f"📂 Reading archived.csv from: {archived_csv_path}")
-    
-    # Load the archived CSV file
-    try:
-        archived_df = pd.read_csv(archived_csv_path)
-        print(f"✅ Loaded {len(archived_df)} records from archived.csv")
-    except Exception as e:
-        print(f"❌ Failed to read archived.csv: {e}")
-        return upload_results
-    
-    # Create a mapping from doc_id to file_path for quick lookup
-    file_path_mapping = {}
-    for _, row in archived_df.iterrows():
-        doc_id = str(row.get('doc_id', '')).strip()
-        file_path = str(row.get('file_path', '')).strip()
-        if doc_id and file_path and file_path != 'nan':
-            file_path_mapping[doc_id] = file_path
-    
-    print(f"📋 Created file path mapping for {len(file_path_mapping)} documents")
     
     for i, item in enumerate(upload_metadata, 1):
         doc_id = item.get("doc_id")
@@ -344,6 +331,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, archived_csv_path
         gdrive_folder_id = item.get("gdrive_folder_id")
         folder_path = item.get("gdrive_folder_path")
         availability = item.get("availability")
+        local_path = item.get("local_path")
         
         print(f"\n📄 Processing ({i}/{len(upload_metadata)}): {doc_id}")
         print(f"   📁 Folder: {folder_path}")
@@ -360,6 +348,27 @@ def upload_local_documents_to_gdrive(service, upload_metadata, archived_csv_path
             })
             continue
         
+        # Check if local_path exists
+        if not local_path:
+            print(f"   ❌ No local_path found for: {doc_id}")
+            upload_results["file_not_found"] += 1
+            upload_results["errors"].append({
+                "doc_id": doc_id,
+                "error": "No local_path in metadata",
+                "folder_path": folder_path
+            })
+            upload_results["upload_details"].append({
+                "doc_id": doc_id,
+                "status": "no_local_path",
+                "error": "No local_path in metadata",
+                "folder_path": folder_path,
+                "file_name": file_name
+            })
+            continue
+        
+        # Convert to string if it's a Path object
+        local_file_path = str(local_path)
+        
         # Check if file already exists in the folder
         if file_exists_in_folder(service, file_name, gdrive_folder_id):
             print(f"   ✅ File already exists, skipping: {file_name}")
@@ -368,29 +377,10 @@ def upload_local_documents_to_gdrive(service, upload_metadata, archived_csv_path
                 "doc_id": doc_id,
                 "status": "already_exists",
                 "folder_path": folder_path,
-                "file_name": file_name
+                "file_name": file_name,
+                "local_file_path": local_file_path
             })
             continue
-        
-        # Find local file path
-        if doc_id not in file_path_mapping:
-            print(f"   ❌ No file path found in archived.csv for: {doc_id}")
-            upload_results["file_not_found"] += 1
-            upload_results["errors"].append({
-                "doc_id": doc_id,
-                "error": "File path not found in archived.csv",
-                "folder_path": folder_path
-            })
-            upload_results["upload_details"].append({
-                "doc_id": doc_id,
-                "status": "file_not_found",
-                "error": "File path not found in archived.csv",
-                "folder_path": folder_path,
-                "file_name": file_name
-            })
-            continue
-        
-        local_file_path = file_path_mapping[doc_id]
         
         # Check if local file exists
         if not os.path.exists(local_file_path):
@@ -411,9 +401,26 @@ def upload_local_documents_to_gdrive(service, upload_metadata, archived_csv_path
             })
             continue
         
+        # Skip if it's unavailable.json file
+        if file_name.lower().endswith('unavailable.json'):
+            print(f"   ⏭️ Skipping unavailable.json file: {file_name}")
+            upload_results["skipped_documents"] += 1
+            upload_results["upload_details"].append({
+                "doc_id": doc_id,
+                "status": "skipped_json",
+                "folder_path": folder_path,
+                "file_name": file_name,
+                "local_file_path": local_file_path
+            })
+            continue
+        
         # Get file size for logging
-        file_size = os.path.getsize(local_file_path)
-        print(f"   📄 Local file: {local_file_path} ({file_size:,} bytes)")
+        try:
+            file_size = os.path.getsize(local_file_path)
+            print(f"   📄 Local file: {local_file_path} ({file_size:,} bytes)")
+        except Exception as e:
+            print(f"   ⚠️ Could not get file size: {e}")
+            file_size = 0
         
         # Attempt to upload the document
         success = False
@@ -493,10 +500,19 @@ def upload_local_pdf_to_gdrive(service, local_file_path, file_name, folder_id):
     """
     
     try:
+        # Determine MIME type based on file extension
+        file_extension = Path(local_file_path).suffix.lower()
+        if file_extension == '.pdf':
+            mimetype = 'application/pdf'
+        elif file_extension == '.json':
+            mimetype = 'application/json'
+        else:
+            mimetype = 'application/octet-stream'  # Generic binary
+        
         # Create media upload from local file
         media = MediaFileUpload(
             local_file_path,
-            mimetype='application/pdf',
+            mimetype=mimetype,
             resumable=True  # Use resumable upload for larger files
         )
         
@@ -583,8 +599,11 @@ def print_upload_summary(upload_results):
     
     if upload_results['errors']:
         print(f"\n❌ Failed Documents:")
-        for error in upload_results['errors']:
+        for error in upload_results['errors'][:10]:  # Show first 10 errors
             print(f"   • {error['doc_id']}: {error['error']}")
+        
+        if len(upload_results['errors']) > 10:
+            print(f"   ... and {len(upload_results['errors']) - 10} more errors")
     
     print("="*60)
 
@@ -621,40 +640,40 @@ def save_upload_results(upload_results, filename="upload_results.json"):
     """
     
     try:
+        # Convert Path objects to strings for JSON serialization
+        serializable_results = json.loads(json.dumps(upload_results, default=str))
+        
         with open(filename, 'w', encoding='utf-8') as f:
-            json.dump(upload_results, f, ensure_ascii=False, indent=2)
+            json.dump(serializable_results, f, ensure_ascii=False, indent=2)
         print(f"📝 Upload results saved to: {filename}")
     except Exception as e:
         print(f"⚠️ Failed to save results: {e}")
 
 
-def find_archived_csv_files(base_path):
+def filter_pdf_only(upload_metadata):
     """
-    Find all archived.csv files in year folders
+    Filter upload metadata to only include PDF files (exclude unavailable.json)
     
     Args:
-        base_path: Base path to search for archived.csv files
+        upload_metadata: List of upload metadata items
     
     Returns:
-        List of paths to archived.csv files
+        Filtered list containing only PDF files
     """
     
-    archived_files = []
-    base_path = Path(base_path)
+    pdf_metadata = []
+    for item in upload_metadata:
+        file_name = item.get('file_name', '').lower()
+        availability = item.get('availability', '')
+        
+        # Only include available PDF files
+        if (availability == 'Available' and 
+            file_name.endswith('.pdf') and 
+            not file_name.endswith('unavailable.json')):
+            pdf_metadata.append(item)
     
-    try:
-        # Look for year folders (e.g., 2010, 2011, etc.)
-        for year_folder in base_path.iterdir():
-            if year_folder.is_dir() and year_folder.name.isdigit():
-                archived_csv = year_folder / "archived.csv"
-                if archived_csv.exists():
-                    archived_files.append(str(archived_csv))
-                    print(f"📂 Found archived.csv: {archived_csv}")
-    
-    except Exception as e:
-        print(f"❌ Error searching for archived.csv files: {e}")
-    
-    return archived_files
+    print(f"📋 Filtered {len(pdf_metadata)} PDF files from {len(upload_metadata)} total items")
+    return pdf_metadata
 
 
 # Example usage:
@@ -672,41 +691,30 @@ upload_metadata = create_folder_structure_on_cloud(
     parent_folder_id="1gAb9u5B3d_ifUOhBuBQbv_lb5Qu18yF7"
 )
 
+# Filter to only PDF files (excluding unavailable.json)
+pdf_only_metadata = filter_pdf_only(upload_metadata)
+
 # Upload documents from local files
 results = upload_local_documents_to_gdrive(
     service, 
-    upload_metadata,
-    archived_csv_path="/Users/yasandu/Desktop/doc-archive/2010/archived.csv",
+    pdf_only_metadata,  # or use upload_metadata directly
     max_retries=3,
     delay_between_uploads=1
 )
 
-# Or process multiple years
-base_archive_path = "/Users/yasandu/Desktop/doc-archive"
-archived_csv_files = find_archived_csv_files(base_archive_path)
+# Save results
+save_upload_results(results, "upload_results.json")
 
-for csv_file in archived_csv_files:
-    year = Path(csv_file).parent.name
-    print(f"\n🗓️ Processing year: {year}")
-    
-    # Filter metadata for this year
-    year_metadata = [
-        item for item in upload_metadata 
-        if item['gdrive_folder_path'].startswith(year)
-    ]
-    
-    if year_metadata:
-        results = upload_local_documents_to_gdrive(
-            service, 
-            year_metadata,
-            csv_file,
-            max_retries=3,
-            delay_between_uploads=1
-        )
-        
-        # Save results for each year
-        save_upload_results(results, f"upload_results_{year}.json")
+# Access specific results
+print(f"Successful uploads: {results['successful_uploads']}")
+print(f"Failed uploads: {results['failed_uploads']}")
 
-# Save overall results
-save_upload_results(results, "upload_results_all.json")
+# Get list of successful uploads with their Google Drive file IDs
+successful_docs = [
+    detail for detail in results['upload_details'] 
+    if detail['status'] == 'success'
+]
+
+for doc in successful_docs:
+    print(f"✅ {doc['doc_id']}: {doc['gdrive_file_id']}")
 """
