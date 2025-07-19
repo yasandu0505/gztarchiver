@@ -1,4 +1,4 @@
-# Scrapy settings for gazette_tracker project
+# Scrapy settings for document_scraper project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -7,16 +7,16 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = "gazette_tracker"
+BOT_NAME = "document_scraper"
 
-SPIDER_MODULES = ["gazette_tracker.spiders"]
-NEWSPIDER_MODULE = "gazette_tracker.spiders"
+SPIDER_MODULES = ["document_scraper.spiders"]
+NEWSPIDER_MODULE = "document_scraper.spiders"
 
 ADDONS = {}
 
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
-#USER_AGENT = "gazette_tracker (+http://www.yourdomain.com)"
+#USER_AGENT = "document_scraper (+http://www.yourdomain.com)"
 
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
@@ -47,13 +47,13 @@ ROBOTSTXT_OBEY = True
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 #SPIDER_MIDDLEWARES = {
-#    "gazette_tracker.middlewares.GazetteTrackerSpiderMiddleware": 543,
+#    "document_scraper.middlewares.DocumentScraperSpiderMiddleware": 543,
 #}
 
 # Enable or disable downloader middlewares
 # See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #DOWNLOADER_MIDDLEWARES = {
-#    "gazette_tracker.middlewares.GazetteTrackerDownloaderMiddleware": 543,
+#    "document_scraper.middlewares.DocumentScraperDownloaderMiddleware": 543,
 #}
 
 # Enable or disable extensions
@@ -65,7 +65,7 @@ ROBOTSTXT_OBEY = True
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 #ITEM_PIPELINES = {
-#    "gazette_tracker.pipelines.GazetteTrackerPipeline": 300,
+#    "document_scraper.pipelines.DocumentScraperPipeline": 300,
 #}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
