@@ -132,21 +132,13 @@ def main():
         service, 
         filtered_doc_metadata, 
         archive_location,
-        parent_folder_id="1gAb9u5B3d_ifUOhBuBQbv_lb5Qu18yF7"  # or None for root
+        parent_folder_id=config["archive"]["g_drive_parent_folder_id"]  # or None for root
         )
     
     for doc in upload_metadata:
         print(doc)
         print("/n")
         
-    # Upload documents from one year
-#     results = upload_local_documents_to_gdrive(
-#         service, 
-#         upload_metadata,
-#         archived_csv_path="/Users/yasandu/Desktop/doc-archive/2010/archived.csv",
-#         max_retries=3,
-#         delay_between_uploads=1
-# )
 
     pdf_only_metadata = filter_pdf_only(upload_metadata)
     
