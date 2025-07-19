@@ -2,12 +2,30 @@ from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 import sys
-from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure
+from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud
 from scrapy.crawler import CrawlerProcess
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
 from document_scraper.document_scraper.spiders import PDFDownloaderSpider
+from google.oauth2.credentials import Credentials
+from googleapiclient.discovery import build
+from google_auth_oauthlib.flow import InstalledAppFlow
+import os
 
+# This permission scope lets your program access Google Drive
+SCOPES = ['https://www.googleapis.com/auth/drive']
+
+# This function helps you log in and get credentials
+def get_credentials():
+    creds = None
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
+    if not creds or not creds.valid:
+        flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
+        creds = flow.run_local_server(port=0)
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+    return creds
 
 def main():
     # Hide logs (scrapy)
@@ -92,15 +110,44 @@ def main():
     archive_location = config["archive"]["archive_location"]
     all_download_metadata = create_folder_structure(archive_location, filtered_doc_metadata)
     
+    
+    
     # Step 7: Download the documents
-    if all_download_metadata:
-        process.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
-    else:
-        print("Byeeeeeeeee")
-        sys.exit(1)
+    # if all_download_metadata:
+    #     process.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
+    # else:
+    #     print("Byeeeeeeeee")
+    #     sys.exit(1)
         
     # Start crawling
     process.start()
+    
+    # 🔑 Get the login credentials
+    your_credentials = get_credentials()
+    
+    # Setup Google Drive API
+    service = build('drive', 'v3', credentials=your_credentials)
+    
+    upload_metadata = create_folder_structure_on_cloud(
+        service, 
+        filtered_doc_metadata, 
+        archive_location,
+        parent_folder_id="1gAb9u5B3d_ifUOhBuBQbv_lb5Qu18yF7"  # or None for root
+        )
+    
+    for doc in upload_metadata:
+        print(doc)
+        print("/n")
+        
+    # Upload documents from one year
+#     results = upload_local_documents_to_gdrive(
+#         service, 
+#         upload_metadata,
+#         archived_csv_path="/Users/yasandu/Desktop/doc-archive/2010/archived.csv",
+#         max_retries=3,
+#         delay_between_uploads=1
+# )
+    
     
     
     # : Call the correct downloader here based on input kind   
