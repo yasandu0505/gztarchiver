@@ -149,7 +149,8 @@ def main():
         delay_between_uploads=1
     )
     
-    save_upload_results(results, "upload_results.json")
+    upload_results = config["output"]["upload_results_json"]
+    save_upload_results(results, upload_results)
     
     # Access specific results
     print(f"Successful uploads: {results['successful_uploads']}")
