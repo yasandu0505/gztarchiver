@@ -422,6 +422,7 @@ def run_crawlers_sequentially(args, config, project_root):
         if all_download_metadata:
             yield runner.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
             print("✅ All crawlers completed successfully!")
+            yield defer.maybeDeferred(post_crawl_processing, args, config, filtered_doc_metadata, archive_location)
         else:
             print("No documents to download")
             
@@ -429,7 +430,8 @@ def run_crawlers_sequentially(args, config, project_root):
         print(f"Error during crawling: {e}")
     finally:
         # Continue with post-processing
-        yield defer.maybeDeferred(post_crawl_processing, args, config, filtered_doc_metadata, archive_location)
+        # yield defer.maybeDeferred(post_crawl_processing, args, config, filtered_doc_metadata, archive_location)
+        reactor.stop()
 
 
 def post_crawl_processing(args, config, filtered_doc_metadata, archive_location):
@@ -478,10 +480,7 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
             
     except Exception as e:
         print(f"Error during post-processing: {e}")
-    finally:
-        reactor.stop()
-
-
+    
 def main():
     args = parse_args()
     kind = identify_input_kind(args)
