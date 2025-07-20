@@ -8,7 +8,7 @@ git clone https://github.com/yasandu0505/open-doc-tracer.git
 cd open-doc-tracer
 ```
 
-## 🕹️ Usage
+## 🕹️ Usage (Setup your cloud archive before start working)
 
 **Show help:**
 ```bash
@@ -70,6 +70,29 @@ python3 main.py --year 2023 --month 06 --lang en
 ```bash
 python3 main.py --year 2023 --month 06 --day 15 --lang en
 ```
+
+## ☁️ Setup Cloud Archive
+
+**Go to Google Cloud Console**
+```bash
+https://console.cloud.google.com/
+```
+
+**Create a new project**
+
+**Enable the Google Drive API in that project**
+
+**Go to APIs & Services > Credentials**
+
+**Click “Create Credentials” → “OAuth Client ID”**
+
+**Choose Desktop App**
+
+**Download the file — it's called `credentials.json`**
+
+**Create a folder called `credentials` in the root of the project**
+
+**Place the `credentials.json` inside the `credentials`**
 
 ## ✨ Features
 
