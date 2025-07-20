@@ -2,30 +2,13 @@ from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 import sys
-from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results
+from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results,get_cloud_credentials
 from scrapy.crawler import CrawlerProcess
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
 from document_scraper.document_scraper.spiders import PDFDownloaderSpider
-from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from google_auth_oauthlib.flow import InstalledAppFlow
-import os
 
-# This permission scope lets your program access Google Drive
-SCOPES = ['https://www.googleapis.com/auth/drive']
-
-# This function helps you log in and get credentials
-def get_credentials():
-    creds = None
-    if os.path.exists('token.json'):
-        creds = Credentials.from_authorized_user_file('token.json', SCOPES)
-    if not creds or not creds.valid:
-        flow = InstalledAppFlow.from_client_secrets_file('credentials.json', SCOPES)
-        creds = flow.run_local_server(port=0)
-        with open('token.json', 'w') as token:
-            token.write(creds.to_json())
-    return creds
 
 def main():
     # Hide logs (scrapy)
@@ -122,7 +105,7 @@ def main():
         
 
     # 🔑 Get the login credentials
-    your_credentials = get_credentials()
+    your_credentials = get_cloud_credentials()
     
     # Setup Google Drive API
     service = build('drive', 'v3', credentials=your_credentials)
