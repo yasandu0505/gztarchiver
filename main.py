@@ -111,43 +111,41 @@ def main():
     all_download_metadata = create_folder_structure(archive_location, filtered_doc_metadata)
     
     
-    
     # Step 7: Download the documents
     if all_download_metadata:
         process.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
+        # Start crawling
+        process.start()
     else:
         print("Byeeeeeeeee")
         sys.exit(1)
         
-    # Start crawling
-    process.start()
-    
+
     # 🔑 Get the login credentials
     your_credentials = get_credentials()
     
     # Setup Google Drive API
     service = build('drive', 'v3', credentials=your_credentials)
     
+    # Getting the upload metadata
     upload_metadata = create_folder_structure_on_cloud(
         service, 
         filtered_doc_metadata, 
         archive_location,
-        parent_folder_id=config["archive"]["g_drive_parent_folder_id"]  # or None for root
+        parent_folder_id=config["archive"]["g_drive_parent_folder_id"]  
         )
     
-    for doc in upload_metadata:
-        print(doc)
-        print("/n")
-        
-
+    # Filter the available docs
     pdf_only_metadata = filter_pdf_only(upload_metadata)
     
+    # Upload the docs to cloud
     results = upload_local_documents_to_gdrive(
         service, 
         pdf_only_metadata,
         max_retries=3,
         delay_between_uploads=1
     )
+    
     
     upload_results = config["output"]["upload_results_json"]
     save_upload_results(results, upload_results)
