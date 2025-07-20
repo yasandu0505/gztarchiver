@@ -2,3 +2,4 @@ meta_data/
 credentials.json
 token.json
 upload_results.json
+credentials/
