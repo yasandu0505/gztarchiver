@@ -4,68 +4,46 @@ A library for extracting and downloading PDFs from specific websites.
 ## 🛠️ Installation
 
 ```bash
-git clone https://github.com/yasandu0505/test-scraper.git
-cd test-scraper
+git clone https://github.com/yasandu0505/open-doc-tracer.git
+cd open-doc-tracer
 ```
 
-## 🕹️ Usage
+## 🕹️ Usage (Setup your cloud archive before start working)
 
 **Show help:**
 ```bash
-python3 dtracer.py --help
-```
-
-**Fetch new data:**
-```bash
-python3 dtracer.py --update_years
-```
-
-**Extract all data:**
-```bash
-python3 dtracer.py
+python3 main.py --help
 ```
 
 **Extract data for specific year:**
 ```bash
-python3 dtracer.py --year 2023
+python3 main.py --year 2023
 ```
 
-**Extract data for specific year and language:**
+**Extract data for specific year:**
 ```bash
-python3 dtracer.py --year 2023 --lang en
+python3 main.py --year 2023 --lang en
 ```
 
 **Extract data for specific month in a year:**
 ```bash
-python3 dtracer.py --year 2023 --month 06
+python3 main.py --year 2023 --month 06 --lang en
 ```
 
 **Extract data for specific date:**
 ```bash
-python3 dtracer.py --year 2023 --month 06 --day 15
-```
-
-**Extract data with language filter for specific month:**
-```bash
-python3 dtracer.py --year 2023 --month 03 --lang si
-```
-
-**Enable/disable logs:**
-```bash
-python3 dtracer.py --c_logs y    # Enable logs
-python3 dtracer.py --c_logs n    # Disable logs
+python3 main.py --year 2023 --month 06 --day 15 --lang en
 ```
 
 ## 🎛️ Options
 
 | Option | Description | Example | Default |
 |--------|-------------|---------|---------|
-| `--year` | Filter by year or download all | `--year 2023` or `--year all` | `all` |
+| `--year` | Filter by year or download all | `--year 2023` | None |
 | `--month` | Filter by specific month (01-12) | `--month 06` | None |
 | `--day` | Filter by specific day (01-31) | `--day 15` | None |
-| `--lang` | Specify language | `--lang en`, `--lang si`, `--lang ta`, `--lang all` | `all` |
-| `--c_logs` | Enable/disable logs (Y/N) | `--c_logs Y` | `N` |
-| `--update_years` | Update years.json by scraping the website | `--update_years` | `optional` |
+| `--lang` | Specify language | `--lang en`, `--lang si`, `--lang ta` | None |
+
 
 
 ## 🌍 Language Codes
@@ -75,34 +53,48 @@ python3 dtracer.py --c_logs n    # Disable logs
 | `en` | English |
 | `si` | Sinhala |
 | `ta` | Tamil |
-| `all` | All languages |
 
 ## 📅 Date Filtering Examples
 
 **Download all gazettes for 2023:**
 ```bash
-python3 dtracer.py --year 2023
+python3 main.py --year 2023 --lang en
 ```
 
 **Download gazettes for June 2023:**
 ```bash
-python3 dtracer.py --year 2023 --month 06
+python3 main.py --year 2023 --month 06 --lang en
 ```
 
 **Download gazettes for June 15, 2023:**
 ```bash
-python3 dtracer.py --year 2023 --month 06 --day 15
+python3 main.py --year 2023 --month 06 --day 15 --lang en
 ```
 
-**Download English gazettes for March 2023:**
+## ☁️ Setup Cloud Archive
+
+**1.Go to Google Cloud Console**
 ```bash
-python3 dtracer.py --year 2023 --month 03 --lang en
+https://console.cloud.google.com/
 ```
 
-**Download Sinhala gazettes for all available years:**
-```bash
-python3 dtracer.py --year all --lang si
-```
+**2.Create a new project**
+
+**3.Enable the Google Drive API in that project**
+
+**4.Go to APIs & Services > Credentials**
+
+**5.Click “Create Credentials” → “OAuth Client ID”**
+
+**6.Choose Desktop App**
+
+**7.Download the file — it's called `credentials.json`**
+
+**8.Create a folder called `credentials` in the root of the project**
+
+**9.Place the `credentials.json` inside the `credentials`**
+
+**10.Look for the `config.yaml` and edit on your preference**
 
 ## ✨ Features
 
@@ -120,7 +112,7 @@ python3 dtracer.py --year all --lang si
 
 Downloads are organized as:
 ```
-~/Desktop/gazette-archive/
+~/Desktop/doc-archive/
 ├── 2023/
 │   ├── 01/
 │   │   ├── 15/
@@ -136,9 +128,9 @@ Downloads are organized as:
 ## 📊 Log Files
 
 For each year, the following log files are created:
-- `[year]_archive_log.csv` - Successfully downloaded files
-- `[year]_failed_log.csv` - Failed downloads with retry information
-- `[year]_spider_log.txt` - Detailed operation log
+- `archive_logs.csv` - Successfully downloaded files
+- `failed_logs.csv` - Failed downloads with retry information
+- `unavailable_logs.txt` - Unavailable logs
 
 ## 🚨 Error Messages
 
@@ -146,17 +138,6 @@ For each year, the following log files are created:
 - **Invalid year**: `❌ Year '2025' not found in years.json`
 - **Invalid month**: `❌ Invalid month '13'. Must be between 01-12`
 - **Invalid day**: `❌ Invalid day '32'. Must be between 01-31`
-
-## 🧪 Test Scripts
-
-Run following on your root directory
-```bash - to test the archive structure and the pdf quality
-cd tests
-python3 test-files-and-pdf.py
-```
-
-- You'll see this if passed -> '✅ Archive structure and all PDFs are valid!'
-- You'll see this if failed -> '❌ Issues found in the archive. See details above.'
 
 ## 📟 Status
 

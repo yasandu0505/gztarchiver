@@ -8,7 +8,7 @@ def load_doc_metadata_file(json_path: str) -> List[Dict[str, str]]:
 def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
     # TODO : use meaninfull variable name to kind
     if kind == "year-lang":
-        status = f"Document found on : {year}"
+        status = f"{len(doc_metadata)} Documents found on {year}"
         return doc_metadata, status
     
     elif kind == "year-month-lang":
@@ -25,10 +25,12 @@ def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
             doc_date = doc.get('date', '')
             if doc_date.startswith(target_year_month):  # e.g., "2020-12-31" starts with "2020-12"
                 filtered_docs.append(doc)
-                status = f"Document found on : {target_year_month}"
-            else:
-                status = f"No document found on : {target_year_month}"
-        
+            
+        if filtered_docs:
+            status = f"{len(filtered_docs)} Documents found at {target_year_month}"
+        else:
+            status = f"No documents found at {target_year_month}"
+
         return filtered_docs, status
     
     elif kind == "year-month-day-lang":
@@ -44,9 +46,11 @@ def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
             doc_date = doc.get('date', '')
             if doc_date == target_date:
                 filtered_docs.append(doc)
-                status = f"Document found on : {target_date}"
-            else:
-                status = f"No document found on : {target_date}"
+        
+        if filtered_docs:
+            status = f"{len(filtered_docs)} Documents found at {target_date}"
+        else:
+            status = f"No documents found at {target_date}"
         
         return filtered_docs, status
     
