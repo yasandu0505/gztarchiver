@@ -73,26 +73,28 @@ python3 main.py --year 2023 --month 06 --day 15 --lang en
 
 ## ☁️ Setup Cloud Archive
 
-**Go to Google Cloud Console**
+**1.Go to Google Cloud Console**
 ```bash
 https://console.cloud.google.com/
 ```
 
-**Create a new project**
+**2.Create a new project**
 
-**Enable the Google Drive API in that project**
+**3.Enable the Google Drive API in that project**
 
-**Go to APIs & Services > Credentials**
+**4.Go to APIs & Services > Credentials**
 
-**Click “Create Credentials” → “OAuth Client ID”**
+**5.Click “Create Credentials” → “OAuth Client ID”**
 
-**Choose Desktop App**
+**6.Choose Desktop App**
 
-**Download the file — it's called `credentials.json`**
+**7.Download the file — it's called `credentials.json`**
 
-**Create a folder called `credentials` in the root of the project**
+**8.Create a folder called `credentials` in the root of the project**
 
-**Place the `credentials.json` inside the `credentials`**
+**9.Place the `credentials.json` inside the `credentials`**
+
+**10.Look for the `config.yaml` and edit on your preference**
 
 ## ✨ Features
 
