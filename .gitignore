@@ -3,3 +3,4 @@ credentials.json
 token.json
 upload_results.json
 credentials/
+.env
