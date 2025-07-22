@@ -338,6 +338,9 @@ if sys.platform == 'win32':
 from twisted.internet import asyncioreactor
 asyncioreactor.install()
 
+from dotenv import load_dotenv
+import os
+
 from src.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
@@ -347,7 +350,9 @@ from twisted.internet import reactor, defer
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
 from document_scraper.document_scraper.spiders import PDFDownloaderSpider
+from doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, classify_gazette
 from googleapiclient.discovery import build
+
 
 
 @defer.inlineCallbacks
@@ -451,6 +456,8 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
             parent_folder_id=config["archive"]["g_drive_parent_folder_id"]  
         )
         
+        print(upload_metadata)
+        
         # Filter the available docs
         pdf_only_metadata = filter_pdf_only(upload_metadata)
         
@@ -478,10 +485,28 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
         for doc in successful_docs:
             print(f"✅ {doc['doc_id']}: {doc['gdrive_file_id']}")
             
+        extracted_texts = extract_text_from_pdf(upload_metadata[-5:])
+        
+        llm_ready_texts = prepare_for_llm_processing(extracted_texts)
+        
+        api_key = os.getenv("API_KEY")
+        
+        for llm_r_r in llm_ready_texts:
+            print(f"Document ID: {llm_r_r}")
+            res = classify_gazette(llm_ready_texts[llm_r_r], llm_r_r, api_key)
+            if res["success"]:
+                print(f"Gazette type: {res['type']}")
+                print(f"Reasoning: {res['reasoning']}")
+            else:
+                print(f"Error: {res['reasoning']}")
+            print("\n" + "="*80 + "\n")  # Just for separation between documents
+        
     except Exception as e:
         print(f"Error during post-processing: {e}")
     
 def main():
+    
+    load_dotenv() # loads the env file
     args = parse_args()
     kind = identify_input_kind(args)
 
