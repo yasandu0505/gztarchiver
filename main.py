@@ -455,9 +455,7 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
             archive_location,
             parent_folder_id=config["archive"]["g_drive_parent_folder_id"]  
         )
-        
-        print(upload_metadata)
-        
+                
         # Filter the available docs
         pdf_only_metadata = filter_pdf_only(upload_metadata)
         
@@ -507,6 +505,7 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
 def main():
     
     load_dotenv() # loads the env file
+    
     args = parse_args()
     kind = identify_input_kind(args)
 
