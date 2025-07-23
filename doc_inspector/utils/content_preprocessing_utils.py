@@ -136,13 +136,13 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
                         print(f"✅ Successfully extracted and cleaned text from {doc_id}")
                         
                         # Print a preview of the cleaned text
-                        print(f"\n📋 CLEANED TEXT PREVIEW for {doc_id}:")
+                        # print(f"\n📋 CLEANED TEXT PREVIEW for {doc_id}:")
                         print("─" * 50)
                         preview = cleaned_text[:500]  # First 500 characters
-                        print(cleaned_text)
+                        # print(cleaned_text)
                         # if len(cleaned_text) > 500:
                         #     print("... (truncated)")
-                        print("─" * 50)
+                        # print("─" * 50)
                         print(f"Character count: {len(cleaned_text)}")
                         print(f"Word count (approx): {len(cleaned_text.split())}")
                         
