@@ -356,7 +356,7 @@ from googleapiclient.discovery import build
 
 
 @defer.inlineCallbacks
-def run_crawlers_sequentially(args, config, project_root):
+def run_crawlers_sequentially(args, config, project_root, user_input_kind):
     """Run crawlers sequentially using CrawlerRunner"""
     
     # Hide logs (scrapy)
@@ -411,7 +411,7 @@ def run_crawlers_sequentially(args, config, project_root):
 
         filtered_doc_metadata, status = filter_doc_metadata(
             doc_metadata, 
-            identify_input_kind(args), 
+            user_input_kind, 
             year=str(args.year), 
             month=str(args.month), 
             date=str(args.day)
@@ -507,13 +507,13 @@ def main():
     load_dotenv() # loads the env file
     
     args = parse_args()
-    kind = identify_input_kind(args)
+    user_input_kind = identify_input_kind(args)
 
-    if kind == "invalid-input":
+    if user_input_kind == "invalid-input":
         print("Invalid input! --year and --lang are required at minimum.")
         sys.exit(1)
         
-    if kind == "invalid-lang-input":
+    if user_input_kind == "invalid-lang-input":
         print("Please enter supported language")
         print("Supported languages: en (English), si (Sinhala), ta (Tamil)")
         sys.exit(1)
@@ -526,7 +526,7 @@ def main():
         config = yaml.safe_load(f)
 
     # Run crawlers sequentially
-    run_crawlers_sequentially(args, config, project_root)
+    run_crawlers_sequentially(args, config, project_root, user_input_kind)
     reactor.run()
 
 

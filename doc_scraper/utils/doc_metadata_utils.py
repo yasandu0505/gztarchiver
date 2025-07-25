@@ -5,13 +5,13 @@ def load_doc_metadata_file(json_path: str) -> List[Dict[str, str]]:
     with open(json_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
-    # TODO : use meaninfull variable name to kind
-    if kind == "year-lang":
+def filter_doc_metadata(doc_metadata, user_input_kind, year=None, month=None, date=None):
+    
+    if user_input_kind == "year-lang":
         status = f"{len(doc_metadata)} Documents found on {year}"
         return doc_metadata, status
     
-    elif kind == "year-month-lang":
+    elif user_input_kind == "year-month-lang":
         if not year or not month:
             print("Error: year and month required for year-month-lang filtering")
             return doc_metadata
@@ -33,7 +33,7 @@ def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
 
         return filtered_docs, status
     
-    elif kind == "year-month-day-lang":
+    elif user_input_kind == "year-month-day-lang":
         if not year or not month or not date:
             print("Error: year, month, and date required for year-month-day-lang filtering")
             return doc_metadata
@@ -55,7 +55,7 @@ def filter_doc_metadata(doc_metadata, kind, year=None, month=None, date=None):
         return filtered_docs, status
     
     else:
-        print(f"Unknown filter kind: {kind}")
+        print(f"Unknown filter kind: {user_input_kind}")
         return doc_metadata
             
     
