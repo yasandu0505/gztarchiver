@@ -14,6 +14,7 @@ from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
 import json
 from pathlib import Path
+from datetime import datetime
 
 
 def create_folder_structure_on_cloud(service, filtered_doc_metadata, archive_location, parent_folder_id=None):
@@ -630,7 +631,7 @@ def format_file_size(size_bytes):
     return f"{s} {size_names[i]}"
 
 
-def save_upload_results(upload_results, filename="upload_results.json"):
+def save_upload_results(upload_results, filename):
     """
     Save upload results to a JSON file
     
@@ -638,14 +639,16 @@ def save_upload_results(upload_results, filename="upload_results.json"):
         upload_results: Results dictionary from upload_local_documents_to_gdrive()
         filename: Output filename
     """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename_w_timestamps = filename + timestamp + ".json"
     
     try:
         # Convert Path objects to strings for JSON serialization
         serializable_results = json.loads(json.dumps(upload_results, default=str))
         
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename_w_timestamps, 'w', encoding='utf-8') as f:
             json.dump(serializable_results, f, ensure_ascii=False, indent=2)
-        print(f"📝 Upload results saved to: {filename}")
+        print(f"📝 Upload results saved to: {filename_w_timestamps}")
     except Exception as e:
         print(f"⚠️ Failed to save results: {e}")
 

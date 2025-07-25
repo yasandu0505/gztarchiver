@@ -467,8 +467,8 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
             delay_between_uploads=1
         )
         
-        upload_results = config["output"]["upload_results_json"]
-        save_upload_results(results, upload_results)
+        upload_results_location = config["output"]["upload_results_json"]
+        save_upload_results(results, upload_results_location)
         
         # Access specific results
         print(f"Successful uploads: {results['successful_uploads']}")

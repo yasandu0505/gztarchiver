@@ -4,7 +4,7 @@ scrape:
 output:
   years_json: "meta_data/years.json"
   doc_metadata_json: "meta_data/doc_metadata.json"
-  upload_results_json: "meta_data/upload_results.json"
+  upload_results_json: "upload_results/upload_results_"
 
 archive:
   archive_location: "~/Desktop/doc-archive"
