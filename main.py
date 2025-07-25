@@ -341,10 +341,10 @@ asyncioreactor.install()
 from dotenv import load_dotenv
 import os
 
-from src.cmd import parse_args, identify_input_kind
+from doc_scraper.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
-from src.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results,get_cloud_credentials
+from doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results,get_cloud_credentials
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor, defer
 from document_scraper.document_scraper import YearsSpider
