@@ -87,6 +87,7 @@ def create_folder_structure_on_cloud(service, filtered_doc_metadata, archive_loc
         upload_metadata = {
             "doc_id": doc_id,
             "download_url": url,
+            "doc_date": date_str,
             "file_name": file_name,
             "gdrive_folder_id": doc_folder_id,
             "gdrive_folder_path": folder_path,
@@ -328,6 +329,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
     
     for i, item in enumerate(upload_metadata, 1):
         doc_id = item.get("doc_id")
+        doc_date = item.get("doc_date")
         file_name = item.get("file_name")
         gdrive_folder_id = item.get("gdrive_folder_id")
         folder_path = item.get("gdrive_folder_path")
@@ -343,6 +345,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             upload_results["unavailable_documents"] += 1
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "unavailable",
                 "folder_path": folder_path,
                 "file_name": file_name
@@ -360,6 +363,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             })
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "no_local_path",
                 "error": "No local_path in metadata",
                 "folder_path": folder_path,
@@ -376,6 +380,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             upload_results["skipped_documents"] += 1
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "already_exists",
                 "folder_path": folder_path,
                 "file_name": file_name,
@@ -394,6 +399,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             })
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "local_file_not_found",
                 "error": f"Local file not found: {local_file_path}",
                 "folder_path": folder_path,
@@ -408,6 +414,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             upload_results["skipped_documents"] += 1
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "skipped_json",
                 "folder_path": folder_path,
                 "file_name": file_name,
@@ -441,6 +448,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
                     upload_results["successful_uploads"] += 1
                     upload_results["upload_details"].append({
                         "doc_id": doc_id,
+                        "doc_date": doc_date,
                         "status": "success",
                         "gdrive_file_id": file_id,
                         "folder_path": folder_path,
@@ -467,6 +475,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
                     })
                     upload_results["upload_details"].append({
                         "doc_id": doc_id,
+                        "doc_date": doc_date,
                         "status": "failed",
                         "error": str(e),
                         "folder_path": folder_path,
