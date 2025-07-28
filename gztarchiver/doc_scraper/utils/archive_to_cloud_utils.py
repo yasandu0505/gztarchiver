@@ -14,6 +14,7 @@ from googleapiclient.http import MediaFileUpload
 from googleapiclient.errors import HttpError
 import json
 from pathlib import Path
+from datetime import datetime
 
 
 def create_folder_structure_on_cloud(service, filtered_doc_metadata, archive_location, parent_folder_id=None):
@@ -86,6 +87,7 @@ def create_folder_structure_on_cloud(service, filtered_doc_metadata, archive_loc
         upload_metadata = {
             "doc_id": doc_id,
             "download_url": url,
+            "doc_date": date_str,
             "file_name": file_name,
             "gdrive_folder_id": doc_folder_id,
             "gdrive_folder_path": folder_path,
@@ -180,7 +182,8 @@ def find_folder_by_name(service, folder_name, parent_id):
         results = service.files().list(
             q=query,
             spaces='drive',
-            fields='files(id, name)'
+            fields='files(id, name)',
+            supportsAllDrives=True
         ).execute()
         
         files = results.get('files', [])
@@ -217,7 +220,8 @@ def create_folder(service, folder_name, parent_id):
     try:
         folder = service.files().create(
             body=folder_metadata,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         
         return folder.get('id')
@@ -259,7 +263,8 @@ def upload_unavailable_metadata(service, doc_metadata, folder_id, doc_id):
         file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         
         return file.get('id')
@@ -327,6 +332,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
     
     for i, item in enumerate(upload_metadata, 1):
         doc_id = item.get("doc_id")
+        doc_date = item.get("doc_date")
         file_name = item.get("file_name")
         gdrive_folder_id = item.get("gdrive_folder_id")
         folder_path = item.get("gdrive_folder_path")
@@ -342,6 +348,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             upload_results["unavailable_documents"] += 1
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "unavailable",
                 "folder_path": folder_path,
                 "file_name": file_name
@@ -359,6 +366,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             })
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "no_local_path",
                 "error": "No local_path in metadata",
                 "folder_path": folder_path,
@@ -375,6 +383,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             upload_results["skipped_documents"] += 1
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "already_exists",
                 "folder_path": folder_path,
                 "file_name": file_name,
@@ -393,6 +402,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             })
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "local_file_not_found",
                 "error": f"Local file not found: {local_file_path}",
                 "folder_path": folder_path,
@@ -407,6 +417,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
             upload_results["skipped_documents"] += 1
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
+                "doc_date": doc_date,
                 "status": "skipped_json",
                 "folder_path": folder_path,
                 "file_name": file_name,
@@ -440,6 +451,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
                     upload_results["successful_uploads"] += 1
                     upload_results["upload_details"].append({
                         "doc_id": doc_id,
+                        "doc_date": doc_date,
                         "status": "success",
                         "gdrive_file_id": file_id,
                         "folder_path": folder_path,
@@ -466,6 +478,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
                     })
                     upload_results["upload_details"].append({
                         "doc_id": doc_id,
+                        "doc_date": doc_date,
                         "status": "failed",
                         "error": str(e),
                         "folder_path": folder_path,
@@ -526,7 +539,8 @@ def upload_local_pdf_to_gdrive(service, local_file_path, file_name, folder_id):
         file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         
         return file.get('id')
@@ -558,7 +572,8 @@ def file_exists_in_folder(service, file_name, folder_id):
         results = service.files().list(
             q=query,
             spaces='drive',
-            fields='files(id, name)'
+            fields='files(id, name)',
+            supportsAllDrives=True
         ).execute()
         
         files = results.get('files', [])
@@ -630,7 +645,7 @@ def format_file_size(size_bytes):
     return f"{s} {size_names[i]}"
 
 
-def save_upload_results(upload_results, filename="upload_results.json"):
+def save_upload_results(upload_results, filename):
     """
     Save upload results to a JSON file
     
@@ -638,14 +653,16 @@ def save_upload_results(upload_results, filename="upload_results.json"):
         upload_results: Results dictionary from upload_local_documents_to_gdrive()
         filename: Output filename
     """
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename_w_timestamps = filename + timestamp + ".json"
     
     try:
         # Convert Path objects to strings for JSON serialization
         serializable_results = json.loads(json.dumps(upload_results, default=str))
         
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(filename_w_timestamps, 'w', encoding='utf-8') as f:
             json.dump(serializable_results, f, ensure_ascii=False, indent=2)
-        print(f"📝 Upload results saved to: {filename}")
+        print(f"📝 Upload results saved to: {filename_w_timestamps}")
     except Exception as e:
         print(f"⚠️ Failed to save results: {e}")
 

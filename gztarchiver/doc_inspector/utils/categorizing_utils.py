@@ -1,5 +1,7 @@
 import requests
-from doc_inspector.LLM import GAZETTE_CLASSIFICATION_PROMPT
+from gztarchiver.doc_inspector.LLM import GAZETTE_CLASSIFICATION_PROMPT
+from pathlib import Path
+import csv
 
 def classify_gazette(content, doc_id, api_key):
     """
@@ -59,11 +61,11 @@ def classify_gazette(content, doc_id, api_key):
         
         # Determine final classification
         if "1" in type_line:
-            classification_type = "Organisational"
+            classification_type = "ORGANISATIONAL"
         elif "2" in type_line:
-            classification_type = "People"
+            classification_type = "PEOPLE"
         elif "3" in type_line:
-            classification_type = "Hybrid"
+            classification_type = "HYBRID"
         elif "NOT APPLICABLE" in type_line.upper():
             classification_type = "NOT APPLICABLE"
         else:
@@ -101,3 +103,25 @@ def classify_gazette(content, doc_id, api_key):
             "raw_response": None,
             "success": False
         }
+        
+def save_classified_doc_metadata(doc_id, doc_type, doc_type_reason, archive_location, year, doc_date):
+    
+    year_folder = Path(archive_location).expanduser() / str(year)
+    year_folder.mkdir(parents=True, exist_ok=True)
+    
+    # Set the CSV file path
+    csv_file_path = year_folder / "classified_metadata.csv"
+    
+    # Check if file already exists
+    file_exists = csv_file_path.exists()
+    
+    # Write or append to the CSV file
+    with open(csv_file_path, mode='a', newline='', encoding='utf-8') as f:
+        writer = csv.writer(f)
+        if not file_exists:
+            writer.writerow(["Document ID", "Document Date", "Gazette Type", "Reasoning"])
+        writer.writerow([doc_id, doc_date, doc_type, doc_type_reason])
+
+    print(f"[✓] Metadata saved to {csv_file_path}")
+        
+    return

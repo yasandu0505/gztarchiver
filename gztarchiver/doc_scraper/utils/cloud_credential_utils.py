@@ -6,13 +6,17 @@ import os
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
 # This function helps you log in and get credentials
-def get_cloud_credentials():
+def get_cloud_credentials(config):
     creds = None
-    if os.path.exists('credentials/token.json'):
-        creds = Credentials.from_authorized_user_file('credentials/token.json', SCOPES)
+    
+    token_path = config["credentials"]["token_path"]
+    client_secrets_path = config["credentials"]["client_secrets_path"]
+    
+    if os.path.exists(token_path):
+        creds = Credentials.from_authorized_user_file(token_path, SCOPES)
     if not creds or not creds.valid:
-        flow = InstalledAppFlow.from_client_secrets_file('credentials/credentials.json', SCOPES)
+        flow = InstalledAppFlow.from_client_secrets_file(client_secrets_path, SCOPES)
         creds = flow.run_local_server(port=0)
-        with open('credentials/token.json', 'w') as token:
+        with open(token_path, 'w') as token:
             token.write(creds.to_json())
     return creds
