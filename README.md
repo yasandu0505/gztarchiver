@@ -1,5 +1,5 @@
-# 🥽 gztarchiver
-A library for extracting and downloading gazettes from resource website.
+# 🥽 gztarchiver 
+A library for extracting and downloading gazettes from resource website
 
 ## 🛠️ Installation
 
@@ -16,6 +16,30 @@ pip install git+https://github.com/yasandu0505/gztarchiver.git
 
 ---
 
+## 🚀 How It Works
+
+Let me tell you how my program works! The process is straightforward and involves three main steps:
+
+### 📋 Step-by-Step Workflow
+
+**Step 1: Setup Cloud Archive** 🌐
+- First, you need to set up Google Cloud credentials to enable cloud storage functionality
+- This involves creating a Google Cloud project, enabling the Drive API, and downloading your `credentials.json` file
+- Save the credentials in a dedicated folder for security
+- Add the credentials paths in step 2
+
+**Step 2: Create & Configure YAML File** ⚙️
+- Download the example `config.yaml` file from the repository and edit it according to your preferences [download](https://raw.githubusercontent.com/yasandu0505/gztarchiver/refs/heads/py-package/config_example.yaml)
+- Edit this configuration file to specify your download preferences, storage locations, and other settings
+- This file acts as the control center for your archiving operations
+
+**Step 3: Run the Program** 🏃‍♂️
+- Finally, execute the program using the command-line interface with your desired parameters
+- The program will use your cloud credentials and configuration to start downloading and organizing gazette files
+- Sit back and watch as your gazettes are systematically archived!
+
+---
+
 ## 🚀 Usage
 
 After installation, you can run the program using the command-line tool:
@@ -27,17 +51,17 @@ gztarchiver --help
 
 **Extract data for specific year:**
 ```bash
-gztarchiver --year 2023 --lang en
+gztarchiver --year 2023 --lang en --config path-to-the-config-file
 ```
 
 **Extract data for specific month in a year:**
 ```bash
-gztarchiver --year 2023 --month 06 --lang en
+gztarchiver --year 2023 --month 06 --lang en --config path-to-the-config-file
 ```
 
 **Extract data for specific date:**
 ```bash
-gztarchiver --year 2023 --month 06 --day 15 --lang en
+gztarchiver --year 2023 --month 06 --day 15 --lang en --config path-to-the-config-file
 ```
 
 ## 🎛️ Options
@@ -47,8 +71,7 @@ gztarchiver --year 2023 --month 06 --day 15 --lang en
 | `--year` | Filter by year or download all | `--year 2023` | None |
 | `--month` | Filter by specific month (01-12) | `--month 06` | None |
 | `--day` | Filter by specific day (01-31) | `--day 15` | None |
-| `--lang` | Specify language | `--lang en`, `--lang si`, `--lang ta` | None |
-
+| `--lang` | Specify language | `--lang en` | None |
 
 ## 🌍 Language Codes
 
@@ -58,47 +81,30 @@ gztarchiver --year 2023 --month 06 --day 15 --lang en
 | `si` | Sinhala |
 | `ta` | Tamil |
 
-## 📅 Date Filtering Examples
-
-**Download all gazettes for 2023:**
-```bash
-python3 main.py --year 2023 --lang en
-```
-
-**Download gazettes for June 2023:**
-```bash
-python3 main.py --year 2023 --month 06 --lang en
-```
-
-**Download gazettes for June 15, 2023:**
-```bash
-python3 main.py --year 2023 --month 06 --day 15 --lang en
-```
-
 ## ☁️ Setup Cloud Archive
 
-**1.Go to Google Cloud Console**
+**1. Go to Google Cloud Console**
 ```bash
 https://console.cloud.google.com/
 ```
 
-**2.Create a new project**
+**2. Create a new project**
 
-**3.Enable the Google Drive API in that project**
+**3. Enable the Google Drive API in that project**
 
-**4.Go to APIs & Services > Credentials**
+**4. Go to APIs & Services > Credentials**
 
-**5.Click “Create Credentials” → “OAuth Client ID”**
+**5. Click "Create Credentials" → "OAuth Client ID"**
 
-**6.Choose Desktop App**
+**6. Choose Desktop App**
 
-**7.Download the file — it's called `credentials.json`**
+**7. Download the file — it's called `credentials.json`**
 
-**8.Create a folder called `credentials` in the root of the project**
+**8. Create a folder called `credentials` somewhere in your computer**
 
-**9.Place the `credentials.json` inside the `credentials`**
+**9. Place the `credentials.json` inside the `credentials`**
 
-**10.Look for the `config.yaml` and edit on your preference**
+**10. Copy the path and update the config.yaml file**
 
 ## ✨ Features
 
@@ -121,9 +127,7 @@ Downloads are organized as:
 │   ├── 01/
 │   │   ├── 15/
 │   │   │   └── gazette_id/
-│   │   │       ├── gazette_id_english.pdf
-│   │   │       ├── gazette_id_sinhala.pdf
-│   │   │       └── gazette_id_tamil.pdf
+│   │   │       ├── gazette_id_english.pdf   
 │   │   └── ...
 │   └── ...
 └── ...
@@ -134,7 +138,8 @@ Downloads are organized as:
 For each year, the following log files are created:
 - `archive_logs.csv` - Successfully downloaded files
 - `failed_logs.csv` - Failed downloads with retry information
-- `unavailable_logs.txt` - Unavailable logs
+- `unavailable_logs.csv` - Unavailable logs
+- `classified_metadata.csv` - Document Classified metadata
 
 ## 🚨 Error Messages
 
@@ -149,4 +154,4 @@ For each year, the following log files are created:
 
 ---
 
-**Thank you for using Doc-Tracer!**
+**Thank you for using gztarchiver!**
