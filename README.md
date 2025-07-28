@@ -29,7 +29,7 @@ Let me tell you how my program works! The process is straightforward and involve
 - Add the credentials paths in step 2
 
 **Step 2: Create & Configure YAML File** ⚙️
-- Download the example `config.yaml` file from the repository and edit it according to your preferences [download](https://raw.githubusercontent.com/yasandu0505/gztarchiver/refs/heads/py-package/config_example.yaml)
+- Download the example `config.yaml` file from the repository and edit it according to your preferences [download](config_example.yaml)
 - Edit this configuration file to specify your download preferences, storage locations, and other settings
 - This file acts as the control center for your archiving operations
 
