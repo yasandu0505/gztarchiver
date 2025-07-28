@@ -26,10 +26,11 @@ def main():
         sys.exit(1)
 
     # Project root
-    project_root = Path(__file__).parent
+    project_root = Path(__file__).parent   
+    config_path = args.config
 
     # Load config.yaml
-    with open(project_root / "config.yaml") as f:
+    with open(config_path) as f:
         config = yaml.safe_load(f)
 
     # Run crawlers sequentially
