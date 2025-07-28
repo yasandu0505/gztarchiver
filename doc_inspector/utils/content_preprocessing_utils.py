@@ -72,12 +72,14 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
     
     for doc_info in upload_metadata:
         doc_id = doc_info['doc_id']
+        doc_date = doc_info['doc_date']
         file_name = doc_info['file_name']
         availability = doc_info['availability']
         local_path = Path(doc_info['local_path'])
         
         print(f"\n{'─' * 60}")
         print(f"Processing Document ID: {doc_id}")
+        print(f"Document Date: {doc_date}")
         print(f"File Name: {file_name}")
         print(f"Availability: {availability}")
         print(f"Local Path: {local_path}")
@@ -128,6 +130,7 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
                     if cleaned_text:
                         extracted_texts[doc_id] = {
                             "status": "success", 
+                            "doc_date": doc_date,
                             "text": cleaned_text, 
                             "error": None,
                             "page_count": len(pdf_reader.pages),
@@ -200,10 +203,13 @@ def prepare_for_llm_processing(extracted_texts: Dict[str, Dict]) -> Dict[str, st
     
     for doc_id, doc_data in extracted_texts.items():
         if doc_data["status"] == "success" and doc_data["text"]:
-            llm_ready_texts[doc_id] = doc_data["text"]
-            print(f"✅ {doc_id}: Ready for LLM ({doc_data['char_count']} chars, {len(doc_data['text'].split())} words)")
+            llm_ready_texts[doc_id] = {
+                "text": doc_data["text"],
+                "doc_date": doc_data["doc_date"]
+                }
+            print(f"✅ {doc_id}: Ready for LLM ({doc_data['char_count']} chars, {len(doc_data['text'].split())} words) Doc Date: {doc_data['doc_date']}")
         else:
-            print(f"⚠️  {doc_id}: Skipped - {doc_data['status']} ({doc_data.get('error', 'Unknown error')})")
+            print(f"⚠️  {doc_id}: Skipped - {doc_data['status']} ({doc_data.get('error', 'Unknown error')}) Doc Date: {doc_data['doc_date']}")
     
     print(f"\nTotal documents ready for LLM processing: {len(llm_ready_texts)}")
     
