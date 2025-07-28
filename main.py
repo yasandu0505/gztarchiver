@@ -27,6 +27,8 @@ def main():
 
     # Project root
     project_root = Path(__file__).parent   
+    
+    # Get config file location
     config_path = args.config
 
     # Load config.yaml
