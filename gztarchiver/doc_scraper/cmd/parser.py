@@ -7,6 +7,6 @@ def parse_args():
     parser.add_argument('--month', type=int, choices=range(1, 13), help='Month of documents (1-12)')
     parser.add_argument('--day', type=int, choices=range(1, 32), help='Day of documents (1-31)')
     parser.add_argument('--lang', type=str, required=True, help='Language code (e.g. "en", "si", "ta")')
-    parser.add_argument('--config', type=str, required=True, help='Config to the programme')
+    parser.add_argument('--config', type=str, required=True, help='Path to the YAML configuration file containing program settings')
     
     return parser.parse_args()
