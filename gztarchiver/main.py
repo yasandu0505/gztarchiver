@@ -4,15 +4,13 @@ if sys.platform == 'win32':
     asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 from twisted.internet import asyncioreactor
 asyncioreactor.install()
-from dotenv import load_dotenv
-from doc_scraper.cmd import parse_args, identify_input_kind
 from pathlib import Path
 import yaml
 from twisted.internet import reactor
-from doc_scraper.crawler import run_crawlers_sequentially
+from .doc_scraper.cmd import parse_args, identify_input_kind
+from .doc_scraper.crawler import run_crawlers_sequentially
     
 def main():
-    load_dotenv() 
     args = parse_args()
     user_input_kind = identify_input_kind(args)
 

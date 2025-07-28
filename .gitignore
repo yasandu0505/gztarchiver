@@ -2,3 +2,5 @@ meta_data/
 upload_results/
 upload_results.json
 .env
+/gztarchiver.egg-info
+/build

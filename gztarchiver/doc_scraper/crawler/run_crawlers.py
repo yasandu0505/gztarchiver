@@ -1,11 +1,11 @@
 import os
-from doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results,get_cloud_credentials
+from gztarchiver.doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results,get_cloud_credentials
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor, defer
-from document_scraper.document_scraper import YearsSpider
-from document_scraper.document_scraper.spiders import DocMetadataSpider
-from document_scraper.document_scraper.spiders import PDFDownloaderSpider
-from doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, classify_gazette, save_classified_doc_metadata
+from gztarchiver.document_scraper.document_scraper import YearsSpider
+from gztarchiver.document_scraper.document_scraper.spiders import DocMetadataSpider
+from gztarchiver.document_scraper.document_scraper.spiders import PDFDownloaderSpider
+from gztarchiver.doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, classify_gazette, save_classified_doc_metadata
 from googleapiclient.discovery import build
 
 @defer.inlineCallbacks
@@ -139,7 +139,7 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
         extracted_texts = extract_text_from_pdf(upload_metadata[-5:])
         llm_ready_texts = prepare_for_llm_processing(extracted_texts)
         
-        api_key = os.getenv("API_KEY")
+        api_key = config["credentials"]["deepseek_api_key"]
         
         for doc_id in llm_ready_texts:
             doc_text = llm_ready_texts[doc_id]["text"]

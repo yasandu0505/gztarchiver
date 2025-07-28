@@ -1,0 +1,48 @@
+# [build-system]
+# requires = ["setuptools>=61.0"]
+# build-backend = "setuptools.build_meta"
+
+# [project]
+# name = "gztarchiver"
+# version = "0.1.0"
+# description = "Sri Lankan Gazette Archiver"
+# requires-python = ">=3.7"
+# authors = [
+#     { name="Yasandu Imanjith", email="yasanduyaka2005@gmail.com" }
+# ]
+
+# [project.scripts]
+# gztarchiver = "gztarchiver.main:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gztarchiver"
+version = "0.1.0"
+description = "Sri Lankan Gazette Archiver"
+requires-python = ">=3.7"
+authors = [
+    { name="Yasandu Imanjith", email="yasanduyaka2005@gmail.com" }
+]
+dependencies = [
+    "PyYAML>=6.0.0",     
+    "scrapy>=2.13.0",               
+    "google-api-python-client>=2.170.0",
+    "google-auth-oauthlib>=1.2.0",   
+    "google-auth>=2.0.0",              
+    "requests>=2.32.0",                 
+    "PyPDF2>=3.0.0",                    
+]
+
+[project.optional-dependencies]
+# Optional: Add development dependencies
+dev = [
+    "pytest>=6.0",
+    "black",
+    "flake8",
+]
+
+[project.scripts]
+gztarchiver = "gztarchiver.main:main"
