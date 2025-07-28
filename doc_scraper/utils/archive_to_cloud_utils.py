@@ -182,7 +182,8 @@ def find_folder_by_name(service, folder_name, parent_id):
         results = service.files().list(
             q=query,
             spaces='drive',
-            fields='files(id, name)'
+            fields='files(id, name)',
+            supportsAllDrives=True
         ).execute()
         
         files = results.get('files', [])
@@ -219,7 +220,8 @@ def create_folder(service, folder_name, parent_id):
     try:
         folder = service.files().create(
             body=folder_metadata,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         
         return folder.get('id')
@@ -261,7 +263,8 @@ def upload_unavailable_metadata(service, doc_metadata, folder_id, doc_id):
         file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         
         return file.get('id')
@@ -536,7 +539,8 @@ def upload_local_pdf_to_gdrive(service, local_file_path, file_name, folder_id):
         file = service.files().create(
             body=file_metadata,
             media_body=media,
-            fields='id'
+            fields='id',
+            supportsAllDrives=True
         ).execute()
         
         return file.get('id')
@@ -568,7 +572,8 @@ def file_exists_in_folder(service, file_name, folder_id):
         results = service.files().list(
             q=query,
             spaces='drive',
-            fields='files(id, name)'
+            fields='files(id, name)',
+            supportsAllDrives=True
         ).execute()
         
         files = results.get('files', [])
