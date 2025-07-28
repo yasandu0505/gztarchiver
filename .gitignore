@@ -4,3 +4,4 @@ upload_results.json
 .env
 /gztarchiver.egg-info
 /build
+config.yaml
