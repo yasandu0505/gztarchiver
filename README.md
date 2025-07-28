@@ -1,38 +1,43 @@
-# 🥽 Open Doc-Tracer
-A library for extracting and downloading PDFs from specific websites.
+# 🥽 gztarchiver
+A library for extracting and downloading gazettes from resource website.
 
 ## 🛠️ Installation
 
 ```bash
-git clone https://github.com/yasandu0505/open-doc-tracer.git
-cd open-doc-tracer
+pip install git+https://github.com/yasandu0505/gztarchiver.git
 ```
 
-## 🕹️ Usage (Setup your cloud archive before start working)
+> ⚠️ If installed with `--user`, make sure your Python user scripts directory is in your PATH:
+>
+> For example:
+> ```bash
+> export PATH="$HOME/Library/Python/3.9/bin:$PATH"
+> ```
+
+---
+
+## 🚀 Usage
+
+After installation, you can run the program using the command-line tool:
 
 **Show help:**
 ```bash
-python3 main.py --help
+gztarchiver --help
 ```
 
 **Extract data for specific year:**
 ```bash
-python3 main.py --year 2023
-```
-
-**Extract data for specific year:**
-```bash
-python3 main.py --year 2023 --lang en
+gztarchiver --year 2023 --lang en
 ```
 
 **Extract data for specific month in a year:**
 ```bash
-python3 main.py --year 2023 --month 06 --lang en
+gztarchiver --year 2023 --month 06 --lang en
 ```
 
 **Extract data for specific date:**
 ```bash
-python3 main.py --year 2023 --month 06 --day 15 --lang en
+gztarchiver --year 2023 --month 06 --day 15 --lang en
 ```
 
 ## 🎛️ Options
@@ -43,7 +48,6 @@ python3 main.py --year 2023 --month 06 --day 15 --lang en
 | `--month` | Filter by specific month (01-12) | `--month 06` | None |
 | `--day` | Filter by specific day (01-31) | `--day 15` | None |
 | `--lang` | Specify language | `--lang en`, `--lang si`, `--lang ta` | None |
-
 
 
 ## 🌍 Language Codes
