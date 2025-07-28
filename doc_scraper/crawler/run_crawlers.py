@@ -96,7 +96,7 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
     """Handle post-crawl processing (Google Drive upload, etc.)"""
     try:
         # 🔑 Get the login credentials
-        your_credentials = get_cloud_credentials()
+        your_credentials = get_cloud_credentials(config)
         
         # Setup Google Drive API
         service = build('drive', 'v3', credentials=your_credentials)
