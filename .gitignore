@@ -2,4 +2,4 @@ meta_data/
 upload_results/
 upload_results.json
 .env
-config.yaml
+/config.yaml
