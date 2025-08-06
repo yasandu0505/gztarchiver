@@ -338,6 +338,7 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
         folder_path = item.get("gdrive_folder_path")
         availability = item.get("availability")
         local_path = item.get("local_path")
+        download_url = item.get("download_url")
         
         print(f"\n📄 Processing ({i}/{len(upload_metadata)}): {doc_id}")
         print(f"   📁 Folder: {folder_path}")
@@ -378,16 +379,21 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
         local_file_path = str(local_path)
         
         # Check if file already exists in the folder
-        if file_exists_in_folder(service, file_name, gdrive_folder_id):
+        is_file_existing, g_drive_id = file_exists_in_folder(service, file_name, gdrive_folder_id)
+        if is_file_existing:
             print(f"   ✅ File already exists, skipping: {file_name}")
             upload_results["skipped_documents"] += 1
+            cloud_file_url = get_gdrive_url_from_file_id(g_drive_id)
             upload_results["upload_details"].append({
                 "doc_id": doc_id,
                 "doc_date": doc_date,
                 "status": "already_exists",
+                "gdrive_file_id": g_drive_id,
+                "gdrive_file_url": cloud_file_url,
                 "folder_path": folder_path,
                 "file_name": file_name,
-                "local_file_path": local_file_path
+                "local_file_path": local_file_path,
+                "download_url" : download_url
             })
             continue
         
@@ -449,15 +455,18 @@ def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, de
                 if file_id:
                     print(f"   ✅ Upload successful! File ID: {file_id}")
                     upload_results["successful_uploads"] += 1
+                    cloud_file_url = get_gdrive_url_from_file_id(file_id)
                     upload_results["upload_details"].append({
                         "doc_id": doc_id,
                         "doc_date": doc_date,
                         "status": "success",
                         "gdrive_file_id": file_id,
+                        "gdrive_file_url": cloud_file_url,
                         "folder_path": folder_path,
                         "file_name": file_name,
                         "local_file_path": local_file_path,
-                        "file_size_bytes": file_size
+                        "file_size_bytes": file_size,
+                        "download_url" : download_url
                     })
                     success = True
                     break
@@ -577,7 +586,8 @@ def file_exists_in_folder(service, file_name, folder_id):
         ).execute()
         
         files = results.get('files', [])
-        return len(files) > 0
+        g_drive_id = files[0]['id'] if files else None
+        return len(files) > 0 , g_drive_id
         
     except HttpError as e:
         print(f"   ⚠️ Error checking file existence: {e}")
@@ -653,6 +663,11 @@ def save_upload_results(upload_results, filename):
         upload_results: Results dictionary from upload_local_documents_to_gdrive()
         filename: Output filename
     """
+    
+    # create dir if not exists
+    upload_result_dir = 'upload_results'
+    os.makedirs(upload_result_dir, exist_ok=True)
+    
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     filename_w_timestamps = filename + timestamp + ".json"
     
@@ -691,6 +706,20 @@ def filter_pdf_only(upload_metadata):
     
     print(f"📋 Filtered {len(pdf_metadata)} PDF files from {len(upload_metadata)} total items")
     return pdf_metadata
+
+
+def get_gdrive_url_from_file_id(file_id):
+    """
+    Convert Google Drive file ID to shareable URL
+    
+    Args:
+        file_id: Google Drive file ID
+        
+    Returns:
+        String: Shareable Google Drive URL
+    """
+    return f"https://drive.google.com/file/d/{file_id}/view"
+
 
 
 # Example usage:
