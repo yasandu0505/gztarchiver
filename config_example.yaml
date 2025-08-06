@@ -4,7 +4,7 @@ scrape: # Do not change these
 output: # Do not change these
   years_json: "meta_data/years.json"
   doc_metadata_json: "meta_data/doc_metadata.json"
-  upload_results_json: "upload_results/upload_results_" 
+  upload_results_json: "upload_results/upload_results" 
 
 archive: # Change on your preference
   archive_location: "path-to-your-local-archive-location" # Local archive location
