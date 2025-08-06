@@ -1,5 +1,4 @@
-import os
-from doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results,get_cloud_credentials
+from doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results, get_cloud_credentials, prepare_metadata_for_db
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor, defer
 from document_scraper.document_scraper import YearsSpider
@@ -112,6 +111,8 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
         # Filter the available docs
         pdf_only_metadata = filter_pdf_only(upload_metadata)
         
+        print(pdf_only_metadata)
+        
         # Upload the docs to cloud
         results = upload_local_documents_to_gdrive(
             service, 
@@ -136,10 +137,13 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
         for doc in successful_docs:
             print(f"✅ {doc['doc_id']}: {doc['gdrive_file_id']}")
             
-        extracted_texts = extract_text_from_pdf(upload_metadata[-5:])
+        extracted_texts = extract_text_from_pdf(upload_metadata)
         llm_ready_texts = prepare_for_llm_processing(extracted_texts)
         
-        api_key = os.getenv("API_KEY")
+        api_key = config["credentials"]["deepseek_api_key"]
+        
+        classified_metadata = []
+        classified_metadata_dic = {}
         
         for doc_id in llm_ready_texts:
             doc_text = llm_ready_texts[doc_id]["text"]
@@ -156,8 +160,20 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
                 doc_type = "Error"
                 doc_type_reason = res['reasoning']
                 print(f"Error: {res['reasoning']}")
-            save_classified_doc_metadata(doc_id, doc_type, doc_type_reason, archive_location, args.year, doc_date)
+            # Append metadata for later saving
+            classified_metadata.append((doc_id, doc_date, doc_type, doc_type_reason))
+            classified_metadata_dic[doc_id] = {
+                'doc_date': doc_date,
+                'doc_type': doc_type,
+                'reasoning': doc_type_reason
+            }
             print("\n" + "="*80 + "\n") 
+        save_classified_doc_metadata(classified_metadata, archive_location, args.year)
         
+        prepared_metadata_to_store = prepare_metadata_for_db(results, classified_metadata_dic)
+    
+        from pprint import pprint
+        pprint(prepared_metadata_to_store)
+            
     except Exception as e:
         print(f"Error during post-processing: {e}")
