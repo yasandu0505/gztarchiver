@@ -97,13 +97,19 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
         # Check if file exists
         if not local_path.exists():
             print(f"❌ ERROR: File not found at {local_path}")
-            extracted_texts[doc_id] = {"status": "error", "text": "", "error": "File not found"}
+            extracted_texts[doc_id] = {"status": "error",
+                                       "doc_date": doc_date,
+                                       "text": "", 
+                                       "error": "File not found"}
             continue
         
         # Check if it's a PDF file
         if not file_name.endswith('.pdf'):
             print(f"⚠️  SKIPPED: {file_name} is not a PDF file")
-            extracted_texts[doc_id] = {"status": "skipped", "text": "", "error": "Not a PDF file"}
+            extracted_texts[doc_id] = {"status": "skipped",
+                                       "doc_date": doc_date,
+                                       "text": "", 
+                                       "error": "Not a PDF file"}
             continue
         
         try:
