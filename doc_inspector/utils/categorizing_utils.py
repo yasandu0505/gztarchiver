@@ -122,3 +122,34 @@ def save_classified_doc_metadata(metadata_list, archive_location, year):
     print(f"[✓] Metadata saved to {csv_file_path}")
         
     return
+
+
+def prepare_classified_metadata(llm_ready_texts, api_key):
+    classified_metadata = []
+    classified_metadata_dic = {}
+        
+    for doc_id in llm_ready_texts:
+        doc_text = llm_ready_texts[doc_id]["text"]
+        doc_date = llm_ready_texts[doc_id]["doc_date"]
+        print(f"Document ID: {doc_id}")
+        print(f"Document Date: {doc_date}")
+        res = classify_gazette(doc_text, doc_id, api_key)
+        if res["success"]:
+            doc_type = res['type']
+            doc_type_reason = res['reasoning']
+            print(f"Gazette type: {res['type']}")
+            print(f"Reasoning: {res['reasoning']}")
+        else:
+            doc_type = "Error"
+            doc_type_reason = res['reasoning']
+            print(f"Error: {res['reasoning']}")
+        # Append metadata for later saving
+        classified_metadata.append((doc_id, doc_date, doc_type, doc_type_reason))
+        classified_metadata_dic[doc_id] = {
+            'doc_date': doc_date,
+            'doc_type': doc_type,
+            'reasoning': doc_type_reason
+        }
+        print("\n" + "="*80 + "\n") 
+    
+    return classified_metadata, classified_metadata_dic

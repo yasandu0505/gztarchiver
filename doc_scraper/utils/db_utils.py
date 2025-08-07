@@ -1,3 +1,36 @@
+from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
+
+def connect_to_db(mongo_uri):
+    try:
+        client = MongoClient(mongo_uri)
+        
+        # Attempt to connect to the server
+        client.admin.command('ping')
+        print("✅ Connected to MongoDB successfully.")
+
+        return client
+
+    except ConnectionFailure as e:
+        print("❌ Failed to connect to MongoDB:", e)
+        return None
+
+def insert_docs_by_year(db, prepared_metadata_to_store, year):
+    for doc in prepared_metadata_to_store:
+        try:
+            # Extract year from the document_date
+            collection_name = f"gazettes_{year}"
+            collection = db[collection_name]
+
+            # Insert the document
+            result = collection.insert_one(doc)
+            print(f"📄 Inserted {doc['document_id']} into {collection_name}, ID: {result.inserted_id}")
+
+        except Exception as e:
+            print(f"❌ Failed to insert {doc['document_id']}: {e}")
+    
+    return
+
 def prepare_metadata_for_db(upload_results, classified_metadata_dic):
     
     # Merge data  
@@ -21,4 +54,5 @@ def prepare_metadata_for_db(upload_results, classified_metadata_dic):
         })
         
     return merged_output
+
 

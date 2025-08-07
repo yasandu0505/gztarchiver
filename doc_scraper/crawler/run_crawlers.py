@@ -1,10 +1,10 @@
-from doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results, get_cloud_credentials, prepare_metadata_for_db
+from doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results, get_cloud_credentials, prepare_metadata_for_db, connect_to_db, insert_docs_by_year
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor, defer
 from document_scraper.document_scraper import YearsSpider
 from document_scraper.document_scraper.spiders import DocMetadataSpider
 from document_scraper.document_scraper.spiders import PDFDownloaderSpider
-from doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, classify_gazette, save_classified_doc_metadata
+from doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, save_classified_doc_metadata, prepare_classified_metadata
 from googleapiclient.discovery import build
 
 @defer.inlineCallbacks
@@ -33,7 +33,6 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
         # Step 2: Validate CLI --year against scraped data
         metadata = load_years_metadata(output_path)
         scraped_years = [entry["year"] for entry in metadata]
-        print(scraped_years)
         
         if str(args.year) not in scraped_years:
             print(f"Error: Year '{args.year}' is not available in scraped data.")
@@ -110,9 +109,7 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
                 
         # Filter the available docs
         pdf_only_metadata = filter_pdf_only(upload_metadata)
-        
-        print(pdf_only_metadata)
-        
+                
         # Upload the docs to cloud
         results = upload_local_documents_to_gdrive(
             service, 
@@ -142,38 +139,21 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
         
         api_key = config["credentials"]["deepseek_api_key"]
         
-        classified_metadata = []
-        classified_metadata_dic = {}
-        
-        for doc_id in llm_ready_texts:
-            doc_text = llm_ready_texts[doc_id]["text"]
-            doc_date = llm_ready_texts[doc_id]["doc_date"]
-            print(f"Document ID: {doc_id}")
-            print(f"Document Date: {doc_date}")
-            res = classify_gazette(doc_text, doc_id, api_key)
-            if res["success"]:
-                doc_type = res['type']
-                doc_type_reason = res['reasoning']
-                print(f"Gazette type: {res['type']}")
-                print(f"Reasoning: {res['reasoning']}")
-            else:
-                doc_type = "Error"
-                doc_type_reason = res['reasoning']
-                print(f"Error: {res['reasoning']}")
-            # Append metadata for later saving
-            classified_metadata.append((doc_id, doc_date, doc_type, doc_type_reason))
-            classified_metadata_dic[doc_id] = {
-                'doc_date': doc_date,
-                'doc_type': doc_type,
-                'reasoning': doc_type_reason
-            }
-            print("\n" + "="*80 + "\n") 
+        classified_metadata, classified_metadata_dic = prepare_classified_metadata(llm_ready_texts, api_key)
+            
         save_classified_doc_metadata(classified_metadata, archive_location, args.year)
         
         prepared_metadata_to_store = prepare_metadata_for_db(results, classified_metadata_dic)
-    
-        from pprint import pprint
-        pprint(prepared_metadata_to_store)
+        
+        uri = config["db_credentials"]["mongo_db_uri"]
+        
+        client = connect_to_db(uri)
+        
+        if client:
+            db = client["doc_db"]
+            insert_docs_by_year(db, prepared_metadata_to_store, args.year)
+        else:
+            print("failed..........uploading failed.........")
             
     except Exception as e:
         print(f"Error during post-processing: {e}")

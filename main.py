@@ -9,8 +9,15 @@ from pathlib import Path
 import yaml
 from twisted.internet import reactor
 from doc_scraper.crawler import run_crawlers_sequentially
+from pyfiglet import figlet_format
+from termcolor import colored
     
 def main():
+    
+    ascii_art = figlet_format('gztarchiver', font='big')
+    colored_art = colored(ascii_art, color='cyan')
+    print("\n" + colored_art)
+    
     args = parse_args()
     user_input_kind = identify_input_kind(args)
 
