@@ -6,6 +6,145 @@ from document_scraper.document_scraper.spiders import DocMetadataSpider
 from document_scraper.document_scraper.spiders import PDFDownloaderSpider
 from doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, save_classified_doc_metadata, prepare_classified_metadata
 from googleapiclient.discovery import build
+import json
+from pathlib import Path
+from datetime import datetime
+
+
+def update_progress_state(args, batch_info, processed_count, archive_location):
+    """Update state after batch completion"""
+    
+    new_last_index = batch_info['start_index'] + processed_count - 1
+    completed = (batch_info['start_index'] + batch_info['limit']) >= batch_info['total_docs']
+    
+    state_data = {
+        'year': str(args.year),
+        'month': str(getattr(args, 'month', None)) if getattr(args, 'month', None) else None,
+        'day': str(getattr(args, 'day', None)) if getattr(args, 'day', None) else None,
+        'lang': str(getattr(args, 'lang', 'en')),
+        'last_processed_index': new_last_index,
+        'batch_size': batch_info['batch_size'],
+        'total_docs_in_current_filter': batch_info['total_docs'],
+        'completed': completed,
+        'last_run': datetime.now().isoformat(),
+        'processed_in_last_batch': processed_count
+    }
+    
+    save_progress_state(archive_location, state_data)
+    
+    if completed:
+        print("🎉 All documents processed for current filter!")
+    else:
+        next_start = new_last_index + 1
+        remaining = batch_info['total_docs'] - next_start
+        print(f"📊 Progress: {next_start}/{batch_info['total_docs']} ({remaining} remaining)")
+
+
+def get_next_batch_info(args, filtered_doc_metadata, archive_location):
+    """Determine start_index and remaining docs for this run"""
+    
+    # Load state for current filter criteria
+    state = load_progress_state(
+        archive_location,
+        args.year, 
+        getattr(args, 'month', None), 
+        getattr(args, 'day', None), 
+        getattr(args, 'lang', 'en')
+    )
+    
+    total_docs = len(filtered_doc_metadata)
+    batch_size = getattr(args, 'batch_size', 100)  # Default batch size 100
+    
+    # Handle manual override
+    if getattr(args, 'ignore_state', False) or getattr(args, 'start_index', None) is not None:
+        start_index = getattr(args, 'start_index', 0)
+        print(f"🔧 Manual override: starting from index {start_index}")
+    elif state and state.get('total_docs_in_current_filter') == total_docs and not state.get('completed', False):
+        # Continuing previous run with same data
+        start_index = state.get('last_processed_index', -1) + 1
+        print(f"🔄 Resuming from previous run: index {start_index}")
+        
+        if start_index >= total_docs:
+            print("✅ All documents for this filter already processed!")
+            return None  # Signal completion
+    else:
+        # New filter, data changed, or previous run completed - start from beginning
+        start_index = 0
+        if state:
+            if state.get('completed', False):
+                print("✅ Previous run completed, starting new cycle")
+            else:
+                print("🔄 Data changed since last run, starting fresh")
+        else:
+            print("🚀 Starting new processing cycle")
+    
+    remaining = total_docs - start_index
+    current_batch_size = min(batch_size, remaining)
+    
+    batch_info = {
+        'start_index': start_index,
+        'limit': current_batch_size,
+        'total_docs': total_docs,
+        'batch_size': batch_size,
+        'remaining': remaining
+    }
+    
+    print(f"📦 Batch info:")
+    print(f"   - Total documents: {total_docs}")
+    print(f"   - Start index: {start_index}")
+    print(f"   - Batch size: {current_batch_size}")
+    print(f"   - Remaining after this batch: {remaining - current_batch_size}")
+    
+    return batch_info
+
+def save_progress_state(archive_location, state_data):
+    """Save progress state after batch completion"""
+    state_file = Path(archive_location) / state_data['year'] / "progress_state.json"
+    state_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        with open(state_file, 'w', encoding='utf-8') as f:
+            json.dump(state_data, f, indent=2, ensure_ascii=False)
+        print(f"💾 Progress state saved: {state_file}")
+    except Exception as e:
+        print(f"❌ Error saving progress state: {e}")
+
+def load_progress_state(archive_location, year, month=None, day=None, lang="en"):
+    """Load progress state for current filter criteria"""
+    state_file = Path(archive_location) / str(year) / "progress_state.json"
+    
+    if not state_file.exists():
+        return None
+    
+    try:
+        with open(state_file, 'r', encoding='utf-8') as f:
+            state = json.load(f)
+        
+        # Check if current filter matches saved state
+        current_filter = {
+            'year': str(year),
+            'month': str(month) if month else None,
+            'day': str(day) if day else None,
+            'lang': str(lang)
+        }
+        
+        saved_filter = {
+            'year': state.get('year'),
+            'month': state.get('month'),
+            'day': state.get('day'),
+            'lang': state.get('lang')
+        }
+        
+        if current_filter == saved_filter:
+            return state
+        else:
+            print(f"🔄 Filter changed from previous run, starting fresh")
+            return None
+            
+    except Exception as e:
+        print(f"⚠️ Error loading progress state: {e}")
+        return None
+
 
 @defer.inlineCallbacks
 def run_crawlers_sequentially(args, config, project_root, user_input_kind):
@@ -64,8 +203,8 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
             doc_metadata, 
             user_input_kind, 
             year=str(args.year), 
-            month=str(args.month), 
-            date=str(args.day)
+            month=str(getattr(args, 'month', None)) if getattr(args, 'month', None) else None,
+            date=str(getattr(args, 'day', None)) if getattr(args, 'day', None) else None
         )
         
         print(f"Status : {status}")
@@ -73,12 +212,32 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
         # Step 6: Create the folder structure for the filtered data and get download metadata
         archive_location = config["archive"]["archive_location"]
         all_download_metadata = create_folder_structure(archive_location, filtered_doc_metadata)
+                
+        # Step 7: Determine batch info for automatic chunking
+        batch_info = get_next_batch_info(args, all_download_metadata, archive_location)
+        
+        if not batch_info:
+            print("No more documents to process!")
+            reactor.stop()
+            return
         
         # Step 7: Download the documents
         if all_download_metadata:
-            yield runner.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
+            print(f"🚀 Starting download batch {batch_info['start_index']}-{batch_info['start_index'] + batch_info['limit'] - 1}")
+            # Get corresponding filtered metadata for post-processing
+            chunked_filtered_metadata = filtered_doc_metadata[batch_info['start_index']:batch_info['start_index'] + batch_info['limit']]
+            yield runner.crawl(PDFDownloaderSpider, 
+                               download_metadata=all_download_metadata, 
+                               start_index=batch_info['start_index'],
+                               limit=batch_info['limit'])
+            
+            processed_count = batch_info['limit']
+            
+            update_progress_state(args, batch_info, processed_count, archive_location)
+            
             print("✅ All crawlers completed successfully!")
-            yield defer.maybeDeferred(post_crawl_processing, args, config, filtered_doc_metadata, archive_location)
+            print("✅ Batch completed successfully!")
+            yield defer.maybeDeferred(post_crawl_processing, args, config, chunked_filtered_metadata, archive_location)
         else:
             print("No documents to download")
             
