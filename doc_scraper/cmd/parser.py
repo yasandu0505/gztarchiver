@@ -8,5 +8,8 @@ def parse_args():
     parser.add_argument('--day', type=int, choices=range(1, 32), help='Day of documents (1-31)')
     parser.add_argument('--lang', type=str, required=True, help='Language code (e.g. "en", "si", "ta")')
     parser.add_argument('--config', type=str, required=True, help='Config to the programme')
+    parser.add_argument('--batch-size', type=int, default=100, help='Documents per batch')
+    parser.add_argument('--start-index', type=int, help='Manual start index override')
+    parser.add_argument('--ignore-state', action='store_true', help='Ignore saved state')
     
     return parser.parse_args()
