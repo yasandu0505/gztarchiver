@@ -99,7 +99,8 @@ def get_next_batch_info(args, filtered_doc_metadata, archive_location):
 
 def save_progress_state(archive_location, state_data):
     """Save progress state after batch completion"""
-    state_file = Path(archive_location) / state_data['year'] / "progress_state.json"
+    state_file = Path(archive_location).expanduser() / state_data['year'] / "progress_state.json"
+    # state_file = Path(archive_location) / state_data['year'] / "progress_state.json"
     state_file.parent.mkdir(parents=True, exist_ok=True)
     
     try:
@@ -111,7 +112,7 @@ def save_progress_state(archive_location, state_data):
 
 def load_progress_state(archive_location, year, month=None, day=None, lang="en"):
     """Load progress state for current filter criteria"""
-    state_file = Path(archive_location) / str(year) / "progress_state.json"
+    state_file = Path(archive_location).expanduser() / str(year) / "progress_state.json"
     
     if not state_file.exists():
         return None
