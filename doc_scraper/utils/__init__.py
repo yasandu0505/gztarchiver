@@ -21,5 +21,5 @@ __all__ = [
     "get_cloud_credentials",
     "prepare_metadata_for_db",
     "connect_to_db",
-    "insert_docs_by_year"
+    "insert_docs_by_year",
 ]

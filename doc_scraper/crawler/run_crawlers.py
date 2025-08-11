@@ -236,8 +236,8 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
             
             update_progress_state(args, batch_info, processed_count, archive_location)
             
-            print("✅ All crawlers completed successfully!")
             print("✅ Batch completed successfully!")
+            print("✅ All crawlers completed successfully!")
             yield defer.maybeDeferred(post_crawl_processing, args, config, chunked_filtered_metadata, archive_location)
         else:
             print("No documents to download")
@@ -249,7 +249,7 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
         # yield defer.maybeDeferred(post_crawl_processing, args, config, filtered_doc_metadata, archive_location)
         reactor.stop()
 
-
+# TODO: i have to send filtered_doc_metadata instead of the upload_metadata , otherwise if the create_folder_structure_on_cloud fails , the program stops from there.
 def post_crawl_processing(args, config, filtered_doc_metadata, archive_location):
     """Handle post-crawl processing (Google Drive upload, etc.)"""
     try:
@@ -309,11 +309,13 @@ def post_crawl_processing(args, config, filtered_doc_metadata, archive_location)
         
         client = connect_to_db(uri)
         
+        
+        
         if client:
             db = client["doc_db"]
             insert_docs_by_year(db, prepared_metadata_to_store, args.year)
         else:
-            print("failed..........uploading failed.........")
+            print("❌ Failed uploading to the mongodb")
             
     except Exception as e:
         print(f"Error during post-processing: {e}")

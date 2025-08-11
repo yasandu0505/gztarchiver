@@ -273,35 +273,6 @@ def upload_unavailable_metadata(service, doc_metadata, folder_id, doc_id):
         print(f"❌ Error uploading unavailable metadata: {e}")
         raise
 
-
-# Example usage:
-"""
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-
-# Setup Google Drive API service
-service = build('drive', 'v3', credentials=your_credentials)
-
-# Your filtered document metadata
-filtered_docs = [
-    {
-        "doc_id": "1234-56",
-        "date": "2024-01-15",
-        "download_url": "https://example.com/doc_1234-56_E.pdf",
-        "availability": "Available"
-    },
-    # ... more documents
-]
-
-# Create folder structure (None for root, or specify a parent folder ID)
-upload_metadata = create_gdrive_folder_structure(service, filtered_docs, parent_folder_id=None)
-
-# The upload_metadata will contain Google Drive folder IDs for each document
-for item in upload_metadata:
-    print(f"Doc: {item['doc_id']} -> Folder ID: {item['gdrive_folder_id']}")
-"""
-
-
 def upload_local_documents_to_gdrive(service, upload_metadata, max_retries=3, delay_between_uploads=1):
     """
     Upload locally downloaded documents to Google Drive using local_path from upload metadata
@@ -720,47 +691,3 @@ def get_gdrive_url_from_file_id(file_id):
     """
     return f"https://drive.google.com/file/d/{file_id}/view"
 
-
-
-# Example usage:
-"""
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-
-# Setup Google Drive API service
-service = build('drive', 'v3', credentials=your_credentials)
-
-# Get upload metadata from folder creation
-upload_metadata = create_folder_structure_on_cloud(
-    service, 
-    filtered_doc_metadata, 
-    parent_folder_id="1gAb9u5B3d_ifUOhBuBQbv_lb5Qu18yF7"
-)
-
-# Filter to only PDF files (excluding unavailable.json)
-pdf_only_metadata = filter_pdf_only(upload_metadata)
-
-# Upload documents from local files
-results = upload_local_documents_to_gdrive(
-    service, 
-    pdf_only_metadata,  # or use upload_metadata directly
-    max_retries=3,
-    delay_between_uploads=1
-)
-
-# Save results
-save_upload_results(results, "upload_results.json")
-
-# Access specific results
-print(f"Successful uploads: {results['successful_uploads']}")
-print(f"Failed uploads: {results['failed_uploads']}")
-
-# Get list of successful uploads with their Google Drive file IDs
-successful_docs = [
-    detail for detail in results['upload_details'] 
-    if detail['status'] == 'success'
-]
-
-for doc in successful_docs:
-    print(f"✅ {doc['doc_id']}: {doc['gdrive_file_id']}")
-"""
