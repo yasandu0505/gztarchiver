@@ -1,14 +1,12 @@
-from doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results, get_cloud_credentials, prepare_metadata_for_db, connect_to_db, insert_docs_by_year
+from gztarchiver.doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results, get_cloud_credentials, prepare_metadata_for_db, connect_to_db, insert_docs_by_year
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor, defer
-from document_scraper.document_scraper import YearsSpider
-from document_scraper.document_scraper.spiders import DocMetadataSpider
-from document_scraper.document_scraper.spiders import PDFDownloaderSpider
-from doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, save_classified_doc_metadata, prepare_classified_metadata
+from gztarchiver.document_scraper.document_scraper import YearsSpider
+from gztarchiver.document_scraper.document_scraper.spiders import DocMetadataSpider
+from gztarchiver.document_scraper.document_scraper.spiders import PDFDownloaderSpider
+from gztarchiver.doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, save_classified_doc_metadata, prepare_classified_metadata
 from googleapiclient.discovery import build
-import json
-from pathlib import Path
-from datetime import datetime
+
 
 @defer.inlineCallbacks
 def run_crawlers_sequentially(args, config, project_root, user_input_kind):

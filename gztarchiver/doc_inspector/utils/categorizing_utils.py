@@ -1,5 +1,5 @@
 import requests
-from doc_inspector.LLM import GAZETTE_CLASSIFICATION_PROMPT
+from gztarchiver.doc_inspector.LLM import GAZETTE_CLASSIFICATION_PROMPT
 from pathlib import Path
 import csv
 
