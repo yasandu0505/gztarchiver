@@ -31,28 +31,26 @@ def insert_docs_by_year(db, prepared_metadata_to_store, year):
     
     return
 
-def prepare_metadata_for_db(upload_results, classified_metadata_dic):
-    
-    # Merge data  
+def prepare_metadata_for_db(all_download_metadata, classified_metadata_dic):
     merged_output = []
     
-    upload_details = upload_results["upload_details"]
+    for doc in all_download_metadata:
+        doc_id = doc['doc_id']
         
-    # Convert to lookup dictionary by doc_id
-    upload_lookup = {item["doc_id"]: item for item in upload_details}
-                  
-    for doc_id, classification in classified_metadata_dic.items():
-        upload_info = upload_lookup.get(doc_id, {})
+        # Get classification data if available (only for available documents)
+        classification = classified_metadata_dic.get(doc_id, {})
+        
         merged_output.append({
             "document_id": doc_id,
-            "document_date": classification.get("doc_date"),
-            "document_type": classification.get("doc_type"),
-            "reasoning": classification.get("reasoning"),
-            "gdrive_file_id": upload_info.get("gdrive_file_id"),
-            "gdrive_file_url": upload_info.get("gdrive_file_url"),
-            "download_url": upload_info.get("download_url")
+            "description": doc['des'],
+            "document_date": doc['date'],
+            "document_type": classification.get('doc_type', "UNAVAILABLE"),
+            "reasoning": classification.get('reasoning', "NOT-FOUND"),
+            "file_path": str(doc['file_path']),
+            "download_url": doc['download_url'],
+            "availability": doc['availability']
         })
-        
+    
     return merged_output
 
 

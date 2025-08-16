@@ -76,12 +76,12 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
         # Step 6: Create the folder structure for the filtered data and get download metadata
         archive_location = config["archive"]["archive_location"]
         all_download_metadata = create_folder_structure(archive_location, filtered_doc_metadata)
-                
+                        
         # Step 7: Download the documents
         if all_download_metadata:
             yield runner.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
             print("✅ All crawlers completed successfully!")
-            yield defer.maybeDeferred(post_crawl_processing, args, config, filtered_doc_metadata, archive_location)
+            yield defer.maybeDeferred(post_crawl_processing, args, config, all_download_metadata, archive_location)
         else:
             print("No documents to download")
             
@@ -89,69 +89,37 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
         print(f"Error during crawling: {e}")
     finally:
         # Continue with post-processing
-        # yield defer.maybeDeferred(post_crawl_processing, args, config, filtered_doc_metadata, archive_location)
         reactor.stop()
 
 # TODO: i have to send filtered_doc_metadata instead of the upload_metadata , otherwise if the create_folder_structure_on_cloud fails , the program stops from there.
-def post_crawl_processing(args, config, filtered_doc_metadata, archive_location):
-    """Handle post-crawl processing (Google Drive upload, etc.)"""
+def post_crawl_processing(args, config, all_download_metadata, archive_location):
+    """Handle post-crawl processing (Data preprocessing, etc.)"""
     try:
-        # 🔑 Get the login credentials
-        your_credentials = get_cloud_credentials(config)
+        # Extract data from the pdf files      
+        extracted_texts = extract_text_from_pdf(all_download_metadata)
         
-        # Setup Google Drive API
-        service = build('drive', 'v3', credentials=your_credentials)
-        
-        # Getting the upload metadata
-        upload_metadata = create_folder_structure_on_cloud(
-            service, 
-            filtered_doc_metadata, 
-            archive_location,
-            parent_folder_id=config["archive"]["g_drive_parent_folder_id"]  
-        )
-                
-        # Filter the available docs
-        pdf_only_metadata = filter_pdf_only(upload_metadata)
-                
-        # Upload the docs to cloud
-        results = upload_local_documents_to_gdrive(
-            service, 
-            pdf_only_metadata,
-            max_retries=3,
-            delay_between_uploads=1
-        )
-        
-        upload_results_location = config["output"]["upload_results_json"]
-        save_upload_results(results, upload_results_location)
-        
-        # Access specific results
-        print(f"Successful uploads: {results['successful_uploads']}")
-        print(f"Failed uploads: {results['failed_uploads']}")
-
-        # Get list of successful uploads with their Google Drive file IDs
-        successful_docs = [
-            detail for detail in results['upload_details'] 
-            if detail['status'] == 'success'
-        ]
-
-        for doc in successful_docs:
-            print(f"✅ {doc['doc_id']}: {doc['gdrive_file_id']}")
-            
-        extracted_texts = extract_text_from_pdf(upload_metadata)
+        # Preprocess the extracted data to be used on LLM
         llm_ready_texts = prepare_for_llm_processing(extracted_texts)
         
         api_key = config["credentials"]["deepseek_api_key"]
         
+        # TODO : we can achive this using only a dictionary (no need of bot list and dic)
+        # Classification process of the pdfs'
         classified_metadata, classified_metadata_dic = prepare_classified_metadata(llm_ready_texts, api_key)
-            
+       
+        # BUG : data is not relaiable, issue when saving, rewrite the whole file again in the next run   
+        # Saving the classified metadata of the pdfs'
         save_classified_doc_metadata(classified_metadata, archive_location, args.year)
         
-        prepared_metadata_to_store = prepare_metadata_for_db(results, classified_metadata_dic)
+        # Processing metadata to upload to the database
+        prepared_metadata_to_store = prepare_metadata_for_db(all_download_metadata, classified_metadata_dic)
         
+        # Establish db connection and upload process        
         uri = config["db_credentials"]["mongo_db_uri"]
         
         client = connect_to_db(uri)
         
+        # TODO : update the schema of the backend for CRUD
         if client:
             db = client["doc_db"]
             insert_docs_by_year(db, prepared_metadata_to_store, args.year)

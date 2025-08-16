@@ -130,7 +130,7 @@ def prepare_classified_metadata(llm_ready_texts, api_key):
         
     for doc_id in llm_ready_texts:
         doc_text = llm_ready_texts[doc_id]["text"]
-        doc_date = llm_ready_texts[doc_id]["doc_date"]
+        doc_date = llm_ready_texts[doc_id]["date"]
         print(f"Document ID: {doc_id}")
         print(f"Document Date: {doc_date}")
         res = classify_gazette(doc_text, doc_id, api_key)
