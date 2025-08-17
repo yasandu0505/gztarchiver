@@ -34,7 +34,9 @@ dependencies = [
     "google-auth>=2.0.0",              
     "requests>=2.32.0",                 
     "PyPDF2>=3.0.0", 
-    "pymongo>=4.0.0"                   
+    "pymongo>=4.0.0",
+    "pyfiglet>=0.8",  
+    "termcolor>=2.3.0"                    
 ]
 
 [project.optional-dependencies]
