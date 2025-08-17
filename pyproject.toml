@@ -33,7 +33,8 @@ dependencies = [
     "google-auth-oauthlib>=1.2.0",   
     "google-auth>=2.0.0",              
     "requests>=2.32.0",                 
-    "PyPDF2>=3.0.0",                    
+    "PyPDF2>=3.0.0", 
+    "pymongo>=4.0.0"                   
 ]
 
 [project.optional-dependencies]
