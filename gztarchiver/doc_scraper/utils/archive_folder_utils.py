@@ -3,7 +3,7 @@ import json
 
 def create_folder_structure(archive_location, filtered_doc_metadata):
     
-    base_path = Path(archive_location).expanduser()
+    base_path = archive_location
     
     all_download_metadata = []
     
@@ -12,6 +12,7 @@ def create_folder_structure(archive_location, filtered_doc_metadata):
         date_str = doc.get("date")
         url = doc.get("download_url")
         availability = doc.get("availability")
+        des = doc.get("description")
         
         # Parse date into year/month/day
         try:
@@ -32,13 +33,19 @@ def create_folder_structure(archive_location, filtered_doc_metadata):
         elif "_T.pdf" in url:
             lang_suffix = "tamil"
         else:
-            lang_suffix = "unknown"
+            lang_suffix = "unavailable"
 
-        file_name = f"{doc_id}_{lang_suffix}.pdf"
-        file_path = folder_path / file_name       
+        if availability != "Available" or url == "N/A":
+            file_name = f"{lang_suffix}.txt"
+            file_path = folder_path / file_name 
+        else:      
+            file_name = f"{doc_id}_{lang_suffix}.pdf"
+            file_path = folder_path / file_name       
         
         download_metadata = {
             "doc_id": doc_id,
+            "date": date_str,
+            "des": des,
             "download_url": url,
             "file_name" : file_name,
             "file_path" : file_path,
@@ -52,10 +59,9 @@ def create_folder_structure(archive_location, filtered_doc_metadata):
             unavailable_path = folder_path / "unavailable.txt"
             with open(unavailable_path, "w", encoding="utf-8") as f:
                 json.dump(doc, f, ensure_ascii=False, indent=2)
-            print(f"📄 Unavailable logged: {unavailable_path}")
+            print(f"📄 Unavailable file created: {unavailable_path}")
             continue
  
     
     return all_download_metadata
-
 
