@@ -154,15 +154,24 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]]) -> Dict[s
                         
                     else:
                         print(f"⚠️  WARNING: No readable content after cleaning from {doc_id}")
-                        extracted_texts[doc_id] = {"status": "empty", "text": "", "error": "No readable content after cleaning"}
+                        extracted_texts[doc_id] = {"status": "empty", 
+                                                   "date": doc_date,
+                                                   "text": "", 
+                                                   "error": "No readable content after cleaning"}
                         
                 else:
                     print(f"⚠️  WARNING: No text content extracted from {doc_id}")
-                    extracted_texts[doc_id] = {"status": "empty", "text": "", "error": "No text content found"}
+                    extracted_texts[doc_id] = {"status": "empty",
+                                               "date": doc_date,
+                                               "text": "",                                               
+                                               "error": "No text content found"}
         
         except Exception as e:
             print(f"❌ ERROR processing {doc_id}: {str(e)}")
-            extracted_texts[doc_id] = {"status": "error", "text": "", "error": str(e)}
+            extracted_texts[doc_id] = {"status": "error",
+                                       "date": doc_date,
+                                       "text": "",
+                                       "error": str(e)}
     
     # Summary
     print(f"\n{'=' * 80}")
