@@ -11,7 +11,7 @@ from pathlib import Path
 from datetime import datetime
 
 @defer.inlineCallbacks
-def run_crawlers_sequentially(args, config, project_root, user_input_kind):
+def run_crawlers_sequentially(args, config, user_input_kind):
     """Run crawlers sequentially using CrawlerRunner"""
     
     # Hide logs (scrapy)
@@ -21,11 +21,13 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
     runner = CrawlerRunner(settings=settings)
     
     # Resolve paths
-    output_path = project_root / config["output"]["years_json"]
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path = config["output"]["years_json"]
+    OUTPUT_PATH = Path(output_path)
+    OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     
-    output_path_doc_metadata = project_root / config["output"]["doc_metadata_json"]
-    output_path_doc_metadata.parent.mkdir(parents=True, exist_ok=True)
+    output_path_doc_metadata = config["output"]["doc_metadata_json"]
+    OUTPUT_PATH_DOC_METADATA = Path(output_path_doc_metadata)
+    OUTPUT_PATH_DOC_METADATA.parent.mkdir(parents=True, exist_ok=True)
 
     try:
         # Step 1: Scrape latest year links and save to years.json
@@ -75,7 +77,8 @@ def run_crawlers_sequentially(args, config, project_root, user_input_kind):
         
         # Step 6: Create the folder structure for the filtered data and get download metadata
         archive_location = config["archive"]["archive_location"]
-        all_download_metadata = create_folder_structure(archive_location, filtered_doc_metadata)
+        ARCHIHVE_LOCATION = Path(archive_location)
+        all_download_metadata = create_folder_structure(ARCHIHVE_LOCATION, filtered_doc_metadata)
                         
         # Step 7: Download the documents
         if all_download_metadata:

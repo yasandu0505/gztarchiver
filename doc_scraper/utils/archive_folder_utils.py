@@ -3,7 +3,7 @@ import json
 
 def create_folder_structure(archive_location, filtered_doc_metadata):
     
-    base_path = Path(archive_location).expanduser()
+    base_path = archive_location
     
     all_download_metadata = []
     
