@@ -4,3 +4,4 @@ upload_results/
 /config.yaml
 gztarchiver.egg-info/
 build/
+doc-archive/
