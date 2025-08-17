@@ -146,7 +146,7 @@ def prepare_classified_metadata(llm_ready_texts, api_key):
         # Append metadata for later saving
         classified_metadata.append((doc_id, doc_date, doc_type, doc_type_reason))
         classified_metadata_dic[doc_id] = {
-            'doc_date': doc_date,
+            'date': doc_date,
             'doc_type': doc_type,
             'reasoning': doc_type_reason
         }
