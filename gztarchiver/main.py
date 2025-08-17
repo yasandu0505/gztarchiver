@@ -31,7 +31,7 @@ def main():
         sys.exit(1)
 
     # Project root
-    project_root = Path(__file__).parent   
+    # project_root = Path(__file__).parent   
     
     # Get config file location
     config_path = args.config
@@ -41,7 +41,7 @@ def main():
         config = yaml.safe_load(f)
 
     # Run crawlers sequentially
-    run_crawlers_sequentially(args, config, project_root, user_input_kind)
+    run_crawlers_sequentially(args, config, user_input_kind)
     reactor.run()
 
 

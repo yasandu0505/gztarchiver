@@ -54,7 +54,7 @@ def clean_extracted_text(text: str) -> str:
     return text.strip()
 
 
-def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, str]:
+def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]]) -> Dict[str, str]:
     """
     Extract and clean text from PDF documents based on upload metadata.
     
@@ -70,12 +70,12 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
     print("DOCUMENT TEXT EXTRACTION PROCESS")
     print("=" * 80)
     
-    for doc_info in upload_metadata:
+    for doc_info in all_download_metadata:
         doc_id = doc_info['doc_id']
-        doc_date = doc_info['doc_date']
+        doc_date = doc_info['date']
         file_name = doc_info['file_name']
         availability = doc_info['availability']
-        local_path = Path(doc_info['local_path'])
+        local_path = Path(doc_info['file_path'])
         
         print(f"\n{'─' * 60}")
         print(f"Processing Document ID: {doc_id}")
@@ -86,10 +86,11 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
         print(f"{'─' * 60}")
         
         # Skip unavailable documents
+        # BUG : this should be unavaliable.txt i guess
         if availability == 'Unavailable' or file_name == 'unavailable.json':
             print(f"⚠️  SKIPPED: Document {doc_id} is unavailable")
             extracted_texts[doc_id] = {"status": "unavailable", 
-                                       "doc_date": doc_date,
+                                       "date": doc_date,
                                        "text": "", 
                                        "error": "Document unavailable"}
             continue
@@ -98,7 +99,7 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
         if not local_path.exists():
             print(f"❌ ERROR: File not found at {local_path}")
             extracted_texts[doc_id] = {"status": "error",
-                                       "doc_date": doc_date,
+                                       "date": doc_date,
                                        "text": "", 
                                        "error": "File not found"}
             continue
@@ -107,7 +108,7 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
         if not file_name.endswith('.pdf'):
             print(f"⚠️  SKIPPED: {file_name} is not a PDF file")
             extracted_texts[doc_id] = {"status": "skipped",
-                                       "doc_date": doc_date,
+                                       "date": doc_date,
                                        "text": "", 
                                        "error": "Not a PDF file"}
             continue
@@ -139,7 +140,7 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
                     if cleaned_text:
                         extracted_texts[doc_id] = {
                             "status": "success", 
-                            "doc_date": doc_date,
+                            "date": doc_date,
                             "text": cleaned_text, 
                             "error": None,
                             "page_count": len(pdf_reader.pages),
@@ -167,7 +168,7 @@ def extract_text_from_pdf(upload_metadata: List[Dict[str, Any]]) -> Dict[str, st
     print(f"\n{'=' * 80}")
     print("EXTRACTION SUMMARY")
     print(f"{'=' * 80}")
-    total_docs = len(upload_metadata)
+    total_docs = len(all_download_metadata)
     successful_extractions = len([doc for doc in extracted_texts.values() if doc["status"] == "success"])
     
     print(f"Total documents processed: {total_docs}")
@@ -208,11 +209,11 @@ def prepare_for_llm_processing(extracted_texts: Dict[str, Dict]) -> Dict[str, st
         if doc_data["status"] == "success" and doc_data["text"]:
             llm_ready_texts[doc_id] = {
                 "text": doc_data["text"],
-                "doc_date": doc_data["doc_date"]
+                "date": doc_data["date"]
                 }
-            print(f"✅ {doc_id}: Ready for LLM ({doc_data['char_count']} chars, {len(doc_data['text'].split())} words) Doc Date: {doc_data['doc_date']}")
+            print(f"✅ {doc_id}: Ready for LLM ({doc_data['char_count']} chars, {len(doc_data['text'].split())} words) Date: {doc_data['date']}")
         else:
-            print(f"⚠️  {doc_id}: Skipped - {doc_data['status']} ({doc_data.get('error', 'Unknown error')}) Doc Date: {doc_data['doc_date']}")
+            print(f"⚠️  {doc_id}: Skipped - {doc_data['status']} ({doc_data.get('error', 'Unknown error')}) Date: {doc_data['date']}")
     
     print(f"\nTotal documents ready for LLM processing: {len(llm_ready_texts)}")
     
