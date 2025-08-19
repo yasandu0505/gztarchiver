@@ -9,6 +9,8 @@ output: # Do not change these
 archive: # Change on your preference
   archive_location: "path-to-your-local-archive-location" # Local archive location
   g_drive_parent_folder_id: "path-to-your-google-drive-parent-folder-id" # Parent folder ID of the google drive. 
+  archive_base_url: "your-archive-repo-base-url"
+  force_download_base_url: "your-rawgithubusercontent-base-url"
 
 credentials: # Change on your preference
   token_path: path-to-your-credentials-file/token.json # Set your credentials file
