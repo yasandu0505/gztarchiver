@@ -48,7 +48,7 @@ def prepare_metadata_for_db(all_download_metadata, classified_metadata_dic, conf
             if doc['download_url'] == 'N/A'
             else FORCE_DOWNLOAD_BASE_URL + str(doc['file_path']).lstrip("/")
         )
-            
+                    
         merged_output.append({
             "document_id": doc_id,
             "description": doc['des'],
@@ -57,10 +57,9 @@ def prepare_metadata_for_db(all_download_metadata, classified_metadata_dic, conf
             "reasoning": classification.get('reasoning', "NOT-FOUND"),
             "file_path": ARCHIVE_BASE_URL + str(doc['file_path']).lstrip("/"),
             "download_url": download_url,
+            "source": doc['download_url'],
             "availability": doc['availability']
         })
     
     return merged_output
 
-
-# "source": doc['download_url'],
