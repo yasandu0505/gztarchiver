@@ -31,8 +31,11 @@ def insert_docs_by_year(db, prepared_metadata_to_store, year):
     
     return
 
-def prepare_metadata_for_db(all_download_metadata, classified_metadata_dic):
+def prepare_metadata_for_db(all_download_metadata, classified_metadata_dic, config):
     merged_output = []
+    
+    ARCHIVE_BASE_URL = config["archive"]["archive_base_url"]
+    FORCE_DOWNLOAD_BASE_URL = config["archive"]["force_download_base_url"]
     
     for doc in all_download_metadata:
         doc_id = doc['doc_id']
@@ -46,9 +49,12 @@ def prepare_metadata_for_db(all_download_metadata, classified_metadata_dic):
             "document_date": doc['date'],
             "document_type": classification.get('doc_type', "UNAVAILABLE"),
             "reasoning": classification.get('reasoning', "NOT-FOUND"),
-            "file_path": str(doc['file_path']),
-            "download_url": doc['download_url'],
+            "file_path": ARCHIVE_BASE_URL + str(doc['file_path']).lstrip("/"),
+            "download_url": FORCE_DOWNLOAD_BASE_URL + str(doc['file_path']).lstrip("/"),
+            "source": doc['download_url'],
             "availability": doc['availability']
         })
     
     return merged_output
+
+# "download_url": doc['download_url'],

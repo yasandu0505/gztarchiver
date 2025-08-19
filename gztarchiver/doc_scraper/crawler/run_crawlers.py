@@ -116,7 +116,7 @@ def post_crawl_processing(args, config, all_download_metadata, archive_location)
         save_classified_doc_metadata(classified_metadata, archive_location, args.year)
         
         # Processing metadata to upload to the database
-        prepared_metadata_to_store = prepare_metadata_for_db(all_download_metadata, classified_metadata_dic)
+        prepared_metadata_to_store = prepare_metadata_for_db(all_download_metadata, classified_metadata_dic, config)
         
         # Establish db connection and upload process        
         uri = config["db_credentials"]["mongo_db_uri"]
