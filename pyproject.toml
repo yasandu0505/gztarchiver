@@ -36,7 +36,8 @@ dependencies = [
     "PyPDF2>=3.0.0", 
     "pymongo>=4.0.0",
     "pyfiglet>=0.8",  
-    "termcolor>=2.3.0"                    
+    "termcolor>=2.3.0",
+    "PyMuPDF>=1.26.3"                  
 ]
 
 [project.optional-dependencies]
