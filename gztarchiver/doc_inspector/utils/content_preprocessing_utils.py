@@ -3,6 +3,7 @@ import re
 from pathlib import Path
 from typing import List, Dict, Any
 import unicodedata
+import fitz 
 
 def clean_extracted_text(text: str) -> str:
     """
@@ -53,30 +54,24 @@ def clean_extracted_text(text: str) -> str:
     
     return text.strip()
 
-
-def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]]) -> Dict[str, str]:
+def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_size: int = 20) -> Dict[str, str]:
     """
-    Extract and clean text from PDF documents based on upload metadata.
-    
-    Args:
-        upload_metadata: List of dictionaries containing document metadata
-        
-    Returns:
-        Dictionary with doc_id as key and cleaned extracted text as value
+    Extract and clean text from PDF documents in chunks to avoid freezing on large files.
+    Uses PyMuPDF for faster and more reliable extraction.
     """
     extracted_texts = {}
-    
+
     print("\n" + "=" * 80)
-    print("DOCUMENT TEXT EXTRACTION PROCESS")
+    print("DOCUMENT TEXT EXTRACTION PROCESS (chunked + fast)")
     print("=" * 80)
-    
+
     for doc_info in all_download_metadata:
         doc_id = doc_info['doc_id']
         doc_date = doc_info['date']
         file_name = doc_info['file_name']
         availability = doc_info['availability']
         local_path = Path(doc_info['file_path'])
-        
+
         print(f"\n{'─' * 60}")
         print(f"Processing Document ID: {doc_id}")
         print(f"Document Date: {doc_date}")
@@ -84,118 +79,125 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]]) -> Dict[s
         print(f"Availability: {availability}")
         print(f"Local Path: {local_path}")
         print(f"{'─' * 60}")
-        
-        # Skip unavailable documents
-        # BUG : this should be unavaliable.txt i guess
+
         if availability == 'Unavailable' or file_name == 'unavailable.json':
             print(f"⚠️  SKIPPED: Document {doc_id} is unavailable")
-            extracted_texts[doc_id] = {"status": "unavailable", 
-                                       "date": doc_date,
-                                       "text": "", 
-                                       "error": "Document unavailable"}
+            extracted_texts[doc_id] = {
+                "status": "unavailable",
+                "date": doc_date,
+                "text": "",
+                "error": "Document unavailable"
+            }
             continue
-        
-        # Check if file exists
+
         if not local_path.exists():
             print(f"❌ ERROR: File not found at {local_path}")
-            extracted_texts[doc_id] = {"status": "error",
-                                       "date": doc_date,
-                                       "text": "", 
-                                       "error": "File not found"}
+            extracted_texts[doc_id] = {
+                "status": "error",
+                "date": doc_date,
+                "text": "",
+                "error": "File not found"
+            }
             continue
-        
-        # Check if it's a PDF file
+
         if not file_name.endswith('.pdf'):
             print(f"⚠️  SKIPPED: {file_name} is not a PDF file")
-            extracted_texts[doc_id] = {"status": "skipped",
-                                       "date": doc_date,
-                                       "text": "", 
-                                       "error": "Not a PDF file"}
+            extracted_texts[doc_id] = {
+                "status": "skipped",
+                "date": doc_date,
+                "text": "",
+                "error": "Not a PDF file"
+            }
             continue
-        
+
         try:
-            # Extract text from PDF
             print(f"📄 Extracting text from {file_name}...")
-            
-            with open(local_path, 'rb') as pdf_file:
-                pdf_reader = PyPDF2.PdfReader(pdf_file)
-                raw_text_content = ""
-                
-                print(f"   Number of pages: {len(pdf_reader.pages)}")
-                
-                for page_num, page in enumerate(pdf_reader.pages, 1):
+
+            doc = fitz.open(local_path)
+            total_pages = len(doc)
+            print(f"   Number of pages: {total_pages}")
+
+            raw_text_content = ""
+            for start in range(0, total_pages, chunk_size):
+                end = min(start + chunk_size, total_pages)
+                print(f"   🔄 Processing pages {start+1}–{end}...")
+
+                for page_num in range(start, end):
                     try:
-                        page_text = page.extract_text()
-                        raw_text_content += f"\n--- Page {page_num} ---\n{page_text}\n"
-                        print(f"   ✓ Extracted text from page {page_num}")
+                        page_text = doc[page_num].get_text("text")
+                        raw_text_content += f"\n--- Page {page_num+1} ---\n{page_text}\n"
+                        print(f"   ✓ Extracted text from page {page_num+1}")
                     except Exception as page_error:
-                        print(f"   ❌ Error extracting from page {page_num}: {page_error}")
+                        print(f"   ❌ Error extracting page {page_num+1}: {page_error}")
                         continue
-                
-                if raw_text_content.strip():
-                    # Clean the extracted text
-                    print(f"🧹 Cleaning extracted text...")
-                    cleaned_text = clean_extracted_text(raw_text_content)
-                    
-                    if cleaned_text:
-                        extracted_texts[doc_id] = {
-                            "status": "success", 
-                            "date": doc_date,
-                            "text": cleaned_text, 
-                            "error": None,
-                            "page_count": len(pdf_reader.pages),
-                            "char_count": len(cleaned_text)
-                        }
-                        print(f"✅ Successfully extracted and cleaned text from {doc_id}")
-                        
-                        print("─" * 50)
-                        print(f"Character count: {len(cleaned_text)}")
-                        print(f"Word count (approx): {len(cleaned_text.split())}")
-                        
-                    else:
-                        print(f"⚠️  WARNING: No readable content after cleaning from {doc_id}")
-                        extracted_texts[doc_id] = {"status": "empty", 
-                                                   "date": doc_date,
-                                                   "text": "", 
-                                                   "error": "No readable content after cleaning"}
-                        
+
+            doc.close()
+
+            if raw_text_content.strip():
+                print(f"🧹 Cleaning extracted text...")
+                cleaned_text = clean_extracted_text(raw_text_content)
+
+                if cleaned_text:
+                    extracted_texts[doc_id] = {
+                        "status": "success",
+                        "date": doc_date,
+                        "text": cleaned_text,
+                        "error": None,
+                        "page_count": total_pages,
+                        "char_count": len(cleaned_text)
+                    }
+                    print(f"✅ Successfully extracted and cleaned text from {doc_id}")
+                    print("─" * 50)
+                    print(f"Character count: {len(cleaned_text)}")
+                    print(f"Word count (approx): {len(cleaned_text.split())}")
                 else:
-                    print(f"⚠️  WARNING: No text content extracted from {doc_id}")
-                    extracted_texts[doc_id] = {"status": "empty",
-                                               "date": doc_date,
-                                               "text": "",                                               
-                                               "error": "No text content found"}
-        
+                    print(f"⚠️  WARNING: No readable content after cleaning from {doc_id}")
+                    extracted_texts[doc_id] = {
+                        "status": "empty",
+                        "date": doc_date,
+                        "text": "",
+                        "error": "No readable content after cleaning"
+                    }
+
+            else:
+                print(f"⚠️  WARNING: No text content extracted from {doc_id}")
+                extracted_texts[doc_id] = {
+                    "status": "empty",
+                    "date": doc_date,
+                    "text": "",
+                    "error": "No text content found"
+                }
+
         except Exception as e:
             print(f"❌ ERROR processing {doc_id}: {str(e)}")
-            extracted_texts[doc_id] = {"status": "error",
-                                       "date": doc_date,
-                                       "text": "",
-                                       "error": str(e)}
-    
+            extracted_texts[doc_id] = {
+                "status": "error",
+                "date": doc_date,
+                "text": "",
+                "error": str(e)
+            }
+
     # Summary
     print(f"\n{'=' * 80}")
     print("EXTRACTION SUMMARY")
     print(f"{'=' * 80}")
     total_docs = len(all_download_metadata)
     successful_extractions = len([doc for doc in extracted_texts.values() if doc["status"] == "success"])
-    
+
     print(f"Total documents processed: {total_docs}")
     print(f"Successful extractions: {successful_extractions}")
     print(f"Failed/Skipped: {total_docs - successful_extractions}")
-    
-    # Show status breakdown
+
     status_count = {}
     for doc_id, doc_data in extracted_texts.items():
         status = doc_data["status"]
         status_count[status] = status_count.get(status, 0) + 1
         if status != "success":
             print(f"  - {doc_id}: {status} - {doc_data['error']}")
-    
-    print(f"\nStatus breakdown: {status_count}")
-    
-    return extracted_texts
 
+    print(f"\nStatus breakdown: {status_count}")
+
+    return extracted_texts
 
 def prepare_for_llm_processing(extracted_texts: Dict[str, Dict]) -> Dict[str, str]:
     """
