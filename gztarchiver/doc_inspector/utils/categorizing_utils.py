@@ -59,17 +59,19 @@ def classify_gazette(content, doc_id, api_key):
             elif line.startswith("Reasoning:"):
                 reasoning_line = line.replace("Reasoning:", "").strip()
         
-        # Determine final classification
+       # Determine final classification
         if "1" in type_line:
             classification_type = "ORGANISATIONAL"
         elif "2" in type_line:
             classification_type = "PEOPLE"
         elif "3" in type_line:
             classification_type = "HYBRID"
-        elif "NOT APPLICABLE" in type_line.upper():
-            classification_type = "NOT APPLICABLE"
+        elif "4" in type_line:
+            classification_type = "LAND"
+        elif "5" in type_line:
+            classification_type = "NOT CATEGORISED"
         else:
-            classification_type = "NOT FOUND"
+            classification_type = "NOT CATEGORISED"
         
         return {
             "document_id": doc_id,
@@ -82,7 +84,7 @@ def classify_gazette(content, doc_id, api_key):
     except requests.exceptions.RequestException as e:
         return {
             "document_id": doc_id,
-            "type": "ERROR",
+            "type": "NOT CATEGORISED",
             "reasoning": f"API request failed: {str(e)}",
             "raw_response": None,
             "success": False
@@ -90,7 +92,7 @@ def classify_gazette(content, doc_id, api_key):
     except KeyError as e:
         return {
             "document_id": doc_id,
-            "type": "ERROR",
+            "type": "NOT CATEGORISED",
             "reasoning": f"Unexpected API response format: {str(e)}",
             "raw_response": response.text if 'response' in locals() else None,
             "success": False
@@ -98,7 +100,7 @@ def classify_gazette(content, doc_id, api_key):
     except Exception as e:
         return {
             "document_id": doc_id,
-            "type": "ERROR",
+            "type": "NOT CATEGORISED",
             "reasoning": f"Unexpected error: {str(e)}",
             "raw_response": None,
             "success": False
