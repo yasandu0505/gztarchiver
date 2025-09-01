@@ -83,9 +83,17 @@ def run_crawlers_sequentially(args, config, user_input_kind):
                         
         # Step 7: Download the documents
         if all_download_metadata:
-            yield runner.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata)
+            output_path_download = config["output"]["download_metadta_json"]
+            OUTPUT_PATH_DOWNLOAD = Path(output_path)
+            OUTPUT_PATH_DOWNLOAD.parent.mkdir(parents=True, exist_ok=True)
+            
+            yield runner.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata, output_path=str(output_path_download))
             print("✅ All crawlers completed successfully!")
-            yield defer.maybeDeferred(post_crawl_processing, args, config, all_download_metadata, archive_location)
+            
+            print("✅ Reading updated downloaded metadata!")
+            updated_all_download_metadata = load_doc_metadata_file(output_path_download)
+            
+            yield defer.maybeDeferred(post_crawl_processing, args, config, updated_all_download_metadata, archive_location)
         else:
             print("No documents to download")
             
