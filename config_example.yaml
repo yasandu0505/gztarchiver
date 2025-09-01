@@ -5,6 +5,7 @@ output: # Do not change these
   years_json: "meta_data/years.json"
   doc_metadata_json: "meta_data/doc_metadata.json"
   upload_results_json: "upload_results/upload_results" 
+  download_metadta_json: "meta_data/download_metadata.json"
 
 archive: # Change on your preference
   archive_location: "path-to-your-local-archive-location" # Local archive location
