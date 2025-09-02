@@ -69,9 +69,19 @@ def classify_gazette(content, doc_id, api_key):
         elif "4" in type_line:
             classification_type = "LAND"
         elif "5" in type_line:
-            classification_type = "NOT CATEGORISED"
+            classification_type = "LEGAL_REGULATORY"
+        elif "6" in type_line:
+            classification_type = "COMMERCIAL"
+        elif "7" in type_line:
+            classification_type = "ELECTIONS"
+        elif "8" in type_line:
+            classification_type = "PUBLIC_SERVICE"
+        elif "9" in type_line:
+            classification_type = "JUDICIAL_LAW_ENFORCEMENT"
+        elif "10" in type_line:
+            classification_type = "MISCELLANEOUS"
         else:
-            classification_type = "NOT CATEGORISED"
+            classification_type = "MISCELLANEOUS"
         
         return {
             "document_id": doc_id,
