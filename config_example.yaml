@@ -16,7 +16,8 @@ archive: # Change on your preference
 credentials: # Change on your preference
   token_path: path-to-your-credentials-file/token.json # Set your credentials file
   client_secrets_path: path-to-your-credentials-file/credentials.json # Set your credentials file
-  deepseek_api_key: your-deepseek-api-key # Set your deepseek API key
+  divert_deepseek_api_key: your-deepseek-divert-api-key-from-bijira # Set your key
+  divert_url_deep_seek: your-deepseek-divert-url-from-bijira # Set your URL
   
 db_credentials:
   mongo_db_uri: your-mongodb-cloud-credentials-uri # Set your mongodb cloud credentials uri

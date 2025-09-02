@@ -22,7 +22,7 @@ GAZETTE_CLASSIFICATION_PROMPT = """You are a government gazette classification e
    - Includes **both** the individual's name/title AND **detailed subject matter responsibility**
    - Contains both "who" (government person) and "what" (detailed government responsibilities/portfolios)
 
-**NON-GOVERNMENT CLASSIFICATIONS:**
+**SPECIALIZED CLASSIFICATIONS:**
 
 4. **Land Gazettes** (Type 4): Land and property-related matters
    - Land registrations, property ownership, land titles
@@ -32,40 +32,82 @@ GAZETTE_CLASSIFICATION_PROMPT = """You are a government gazette classification e
    - Land development projects, land allocations
    - Any gazette content primarily dealing with land, property, or real estate matters
 
-5. **Not Categorised** (Type 5): All other content that doesn't fit above categories
+5. **Legal/Regulatory Gazettes** (Type 5): Legal framework and regulatory matters
+   - New laws, acts, ordinances, and regulations
+   - Legal amendments, repeals, or modifications
+   - Statutory instruments and subsidiary legislation
+   - Regulatory frameworks and compliance requirements
+   - Legal notices and statutory declarations
+   - Constitutional amendments or legal interpretations
+
+6. **Commercial Gazettes** (Type 6): Business and commercial matters
    - Business registrations, company incorporations
-   - Licensing matters, permits, certifications
-   - Court notices, legal announcements unrelated to government structure or land
-   - Any administrative matters that don't affect government hierarchy
-   - Content that cannot be classified due to unclear information
-   - Any other gazette content not covered by Types 1-4
+   - Trade licenses and commercial permits
+   - Banking and financial institution regulations
+   - Import/export regulations and trade matters
+   - Commercial licensing and certification
+   - Corporate dissolutions and bankruptcies
+
+7. **Elections Gazettes** (Type 7): Electoral processes and related matters
+   - Election announcements and schedules
+   - Candidate nominations and registrations
+   - Electoral boundary changes
+   - Voter registration matters
+   - Election results and declarations
+   - Electoral commission appointments and decisions
+
+8. **Public Service Gazettes** (Type 8): Public sector services and administration
+   - Public service recruitment and examinations
+   - Service conditions and benefits
+   - Public sector salary revisions
+   - Administrative circulars and instructions
+   - Public service disciplinary matters
+   - Pension and retirement benefits
+
+9. **Judicial/Law Enforcement Gazettes** (Type 9): Courts and law enforcement
+   - Court appointments and judicial matters
+   - Police and security force appointments
+   - Legal proceedings and court orders
+   - Magistrate and judicial officer appointments
+   - Law enforcement regulations and procedures
+   - Prison administration and corrections
+
+10. **Miscellaneous Gazettes** (Type 10): All other content not fitting above categories
+    - Educational matters and academic appointments
+    - Health sector announcements
+    - Cultural and heritage matters
+    - International agreements and treaties
+    - Emergency declarations
+    - Any other administrative matters not covered by Types 1-9
 
 ---
 
-**IMPORTANT CLASSIFICATION PRIORITY FOR GOVERNMENT TYPES:**
-- **HYBRID takes precedence**: If content contains BOTH people names AND *detailed* ministerial portfolio descriptions, it MUST be classified as Hybrid (Type 3)
-- Classify as **"People" (Type 2)** if it ONLY mentions personnel changes (appointments, retirements, promotions, transfers) **without detailed breakdown of portfolio responsibilities**
-- Classify as **"Organisational" (Type 1)** if it ONLY mentions structural or administrative changes **with no specific individuals named**
+**IMPORTANT CLASSIFICATION PRIORITY:**
+1. **Government Types (1-3) take precedence** over other types when content involves government structure/personnel
+2. **HYBRID takes precedence**: If content contains BOTH people names AND *detailed* ministerial portfolio descriptions, it MUST be classified as Hybrid (Type 3)
+3. **Specialized types (4-9)** are for non-governmental administrative matters
+4. **Miscellaneous (Type 10)** is the final fallback category
 
 ---
 
-⚠️ **Clarification Examples**:
-- "Hon. Harini Amarasuriya appointed as Prime Minister" → **Type 2 (People)**  
-   *(Only a title, no detailed portfolio explanation)*
+⚠️ **Classification Examples**:
+- "Hon. Harini Amarasuriya appointed as Prime Minister" → **Type 2 (People)**
 - "Hon. Harini Amarasuriya appointed Minister of Social Empowerment, in charge of child development, elderly care, and women's welfare" → **Type 3 (Hybrid)**
-- "Ministry of Energy to handle national grid operations, tourism shifted under Economic Affairs" → **Type 1 (Organisational)**  
-   *(Structural change only, no specific person named)*
-- "The President is assigned the Ministry of Finance, Energy, and Agriculture" → **Type 3 (Hybrid)**  
-   *(Named individual with multiple portfolios assigned)*
+- "Ministry of Energy to handle national grid operations, tourism shifted under Economic Affairs" → **Type 1 (Organisational)**
 - "Registration of land title for Plot 123, Colombo District" → **Type 4 (Land)**
-- "Business license issued to ABC Company Ltd" → **Type 5 (Not Categorised)**
+- "New Environmental Protection Act 2024 gazetted" → **Type 5 (Legal/Regulatory)**
+- "ABC Company Ltd incorporated" → **Type 6 (Commercial)**
+- "General Election scheduled for November 2024" → **Type 7 (Elections)**
+- "Public Service Commission recruitment circular" → **Type 8 (Public Service)**
+- "High Court Judge appointment" → **Type 9 (Judicial/Law Enforcement)**
+- "University Vice-Chancellor appointment" → **Type 10 (Miscellaneous)**
 
 ---
 
 **CRITICAL DECISION RULES:**
 1. **First Check**: Is this about government structure/personnel? If YES → Apply Types 1-3
-2. **Second Check**: Is this about land/property matters? If YES → Type 4 (Land)
-3. **Default**: All other content → Type 5 (Not Categorised)
+2. **Second Check**: Does it fit a specialized category (4-9)? If YES → Apply appropriate specialized type
+3. **Default**: All other content → Type 10 (Miscellaneous)
 
 **For Government-Related Content (Types 1-3):**
 - Names + *detailed responsibilities* → Hybrid (Type 3)
@@ -75,9 +117,10 @@ GAZETTE_CLASSIFICATION_PROMPT = """You are a government gazette classification e
 ---
 
 **Instructions:**
-- Analyze the content and determine which of the 5 types it belongs to
-- Apply the priority rules for government classifications
-- Respond with the type number (1, 2, 3, 4, or 5) followed by brief explanation
+- Analyze the content and determine which of the 10 types it belongs to
+- Apply the priority rules for government classifications first
+- Consider specialized categories for non-governmental matters
+- Respond with the type number (1-10) followed by brief explanation
 
 **Document ID:** {doc_id}
 
@@ -85,6 +128,6 @@ GAZETTE_CLASSIFICATION_PROMPT = """You are a government gazette classification e
 {content}
 
 **Response Format:**
-Type: [1/2/3/4/5]  
+Type: [1/2/3/4/5/6/7/8/9/10]  
 Reasoning: [Brief explanation of why this classification was chosen]
 """

@@ -3,7 +3,7 @@ from gztarchiver.doc_inspector.LLM import GAZETTE_CLASSIFICATION_PROMPT
 from pathlib import Path
 import csv
 
-def classify_gazette(content, doc_id, api_key):
+def classify_gazette(content, doc_id, divert_api_key, divert_url):
     """
     Classifies a gazette document using DeepSeek LLM API
     
@@ -17,14 +17,14 @@ def classify_gazette(content, doc_id, api_key):
     """
     
     # DeepSeek API endpoint
-    url = "https://api.deepseek.com/v1/chat/completions"
+    url = divert_url
     
     # Construct the prompt with classification criteria
     prompt = GAZETTE_CLASSIFICATION_PROMPT.format(doc_id=doc_id, content=content)
 
     headers = {
         "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
+        "Test-Key": f"{divert_api_key}"
     }
     
     payload = {
@@ -58,7 +58,6 @@ def classify_gazette(content, doc_id, api_key):
                 type_line = line.replace("Type:", "").strip()
             elif line.startswith("Reasoning:"):
                 reasoning_line = line.replace("Reasoning:", "").strip()
-        
        # Determine final classification
         if "1" in type_line:
             classification_type = "ORGANISATIONAL"
@@ -69,9 +68,19 @@ def classify_gazette(content, doc_id, api_key):
         elif "4" in type_line:
             classification_type = "LAND"
         elif "5" in type_line:
-            classification_type = "NOT CATEGORISED"
+            classification_type = "LEGAL_REGULATORY"
+        elif "6" in type_line:
+            classification_type = "COMMERCIAL"
+        elif "7" in type_line:
+            classification_type = "ELECTIONS"
+        elif "8" in type_line:
+            classification_type = "PUBLIC_SERVICE"
+        elif "9" in type_line:
+            classification_type = "JUDICIAL_LAW_ENFORCEMENT"
+        elif "10" in type_line:
+            classification_type = "MISCELLANEOUS"
         else:
-            classification_type = "NOT CATEGORISED"
+            classification_type = "MISCELLANEOUS"
         
         return {
             "document_id": doc_id,
@@ -126,7 +135,7 @@ def save_classified_doc_metadata(metadata_list, archive_location, year):
     return
 
 
-def prepare_classified_metadata(llm_ready_texts, api_key):
+def prepare_classified_metadata(llm_ready_texts, divert_api_key, divert_url ):
     classified_metadata = []
     classified_metadata_dic = {}
         
@@ -135,7 +144,7 @@ def prepare_classified_metadata(llm_ready_texts, api_key):
         doc_date = llm_ready_texts[doc_id]["date"]
         print(f"Document ID: {doc_id}")
         print(f"Document Date: {doc_date}")
-        res = classify_gazette(doc_text, doc_id, api_key)
+        res = classify_gazette(doc_text, doc_id, divert_api_key, divert_url)
         if res["success"]:
             doc_type = res['type']
             doc_type_reason = res['reasoning']

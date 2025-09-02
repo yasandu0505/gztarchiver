@@ -89,11 +89,13 @@ def run_crawlers_sequentially(args, config, user_input_kind):
             
             yield runner.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata, output_path=str(output_path_download))
             print("✅ All crawlers completed successfully!")
-            
-            print("✅ Reading updated downloaded metadata!")
+                        
             updated_all_download_metadata = load_doc_metadata_file(output_path_download)
             
-            yield defer.maybeDeferred(post_crawl_processing, args, config, updated_all_download_metadata, archive_location)
+            if updated_all_download_metadata:
+                yield defer.maybeDeferred(post_crawl_processing, args, config, updated_all_download_metadata, archive_location)
+            else:
+                yield defer.maybeDeferred(post_crawl_processing, args, config, all_download_metadata, archive_location)
         else:
             print("No documents to download")
             
@@ -113,11 +115,12 @@ def post_crawl_processing(args, config, all_download_metadata, archive_location)
         # Preprocess the extracted data to be used on LLM
         llm_ready_texts = prepare_for_llm_processing(extracted_texts)
         
-        api_key = config["credentials"]["deepseek_api_key"]
+        divert_api_key = config["credentials"]["divert_deepseek_api_key"]
+        divert_url = config["credentials"]["divert_url_deep_seek"]
         
         # TODO : we can achive this using only a dictionary (no need of bot list and dic)
         # Classification process of the pdfs'
-        classified_metadata, classified_metadata_dic = prepare_classified_metadata(llm_ready_texts, api_key)
+        classified_metadata, classified_metadata_dic = prepare_classified_metadata(llm_ready_texts, divert_api_key, divert_url)
        
         # BUG : data is not relaiable, issue when saving, rewrite the whole file again in the next run   
         # Saving the classified metadata of the pdfs'
