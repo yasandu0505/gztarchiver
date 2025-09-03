@@ -37,7 +37,9 @@ dependencies = [
     "pymongo>=4.0.0",
     "pyfiglet>=0.8",  
     "termcolor>=2.3.0",
-    "PyMuPDF>=1.26.3"                  
+    "PyMuPDF>=1.26.3",
+    "protobuf>=3.20.2,<6.0",
+    "packaging>=21,<25"               
 ]
 
 [project.optional-dependencies]
