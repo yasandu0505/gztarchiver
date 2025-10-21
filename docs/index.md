@@ -1,8 +1,8 @@
----
-title: "🥽 gztarchiver — Automated Gazette Archiving Tool"
-layout: default
-description: "An intelligent Python-based tool for extracting, downloading, and archiving Sri Lankan government gazettes."
----
+    ---
+    title: "🥽 gztarchiver — Automated Gazette Archiving Tool"
+    layout: default
+    description: "An intelligent Python-based tool for extracting, downloading, and archiving Sri Lankan government gazettes."
+    ---
 
 # 🥽 **gztarchiver — Automated Gazette Archiving Tool**
 
@@ -72,14 +72,12 @@ This ensures the archive remains **fresh and synchronized daily**.
 | **Tool Name** | gztarchiver |
 | **Purpose** | Automate gazette extraction and archiving |
 | **Language** | Python |
-| **Frameworks** | Scrapy, DeepSeek, WSO2 Bijira |
+| **Frameworks** | [Scrapy](https://www.scrapy.org/), [DeepSeek](https://deepseek.ai/), [WSO2 Bijira](https://wso2.com/bijira/) |
 | **Data Source** | [documents.gov.lk](https://documents.gov.lk/) |
 | **Execution Time** | Daily at 20:00 |
 | **Status** | Under active development 🚧 |
 
 ---
-
-**Built with passion by [Yasandu Imanjith](#) for [LDFLK](https://github.com/LDFLK) 🧠**  
 > Automating the way Sri Lanka archives its history.
 
 
