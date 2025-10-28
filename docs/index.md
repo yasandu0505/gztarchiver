@@ -1,8 +1,8 @@
-    ---
-    title: "🥽 gztarchiver — Automated Gazette Archiving Tool"
-    layout: default
-    description: "An intelligent Python-based tool for extracting, downloading, and archiving Sri Lankan government gazettes."
-    ---
+---
+title: "🥽 gztarchiver — Automated Gazette Archiving Tool"
+layout: default
+description: "An intelligent Python-based tool for extracting, downloading, and archiving Sri Lankan government gazettes."
+---
 
 # 🥽 **gztarchiver — Automated Gazette Archiving Tool**
 
