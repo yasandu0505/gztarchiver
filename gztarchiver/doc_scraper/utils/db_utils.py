@@ -22,12 +22,23 @@ def insert_docs_by_year(db, prepared_metadata_to_store, year):
             collection_name = f"gazettes_{year}"
             collection = db[collection_name]
 
-            # Insert the document
-            result = collection.insert_one(doc)
-            print(f"📄 Inserted {doc['document_id']} into {collection_name}, ID: {result.inserted_id}")
+            # Check if document already exists in the collection
+            existing_doc = collection.find_one({"document_id": doc['document_id']})
+            
+            if existing_doc:
+                # Update the existing document with new data
+                result = collection.update_one(
+                    {"document_id": doc['document_id']},
+                    {"$set": doc}
+                )
+                print(f"🔄 Updated {doc['document_id']} in {collection_name}, matched: {result.matched_count}")
+            else:
+                # Insert the document if it doesn't exist
+                result = collection.insert_one(doc)
+                print(f"📄 Inserted {doc['document_id']} into {collection_name}, ID: {result.inserted_id}")
 
         except Exception as e:
-            print(f"❌ Failed to insert {doc['document_id']}: {e}")
+            print(f"❌ Failed to insert/update {doc['document_id']}: {e}")
     
     return
 
