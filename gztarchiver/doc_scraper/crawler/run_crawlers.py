@@ -83,8 +83,8 @@ def run_crawlers_sequentially(args, config, user_input_kind):
                         
         # Step 7: Download the documents
         if all_download_metadata:
-            output_path_download = config["output"]["download_metadta_json"]
-            OUTPUT_PATH_DOWNLOAD = Path(output_path)
+            output_path_download = config["output"]["download_metadata_json"]
+            OUTPUT_PATH_DOWNLOAD = Path(output_path_download)
             OUTPUT_PATH_DOWNLOAD.parent.mkdir(parents=True, exist_ok=True)
             
             yield runner.crawl(PDFDownloaderSpider, download_metadata=all_download_metadata, output_path=str(output_path_download))
