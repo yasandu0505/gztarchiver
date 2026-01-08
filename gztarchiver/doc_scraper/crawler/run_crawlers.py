@@ -1,4 +1,4 @@
-from gztarchiver.doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure,create_folder_structure_on_cloud, upload_local_documents_to_gdrive, filter_pdf_only, save_upload_results, get_cloud_credentials, prepare_metadata_for_db, connect_to_db, insert_docs_by_year
+from gztarchiver.doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure, prepare_metadata_for_storing
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor, defer
 from gztarchiver.document_scraper.document_scraper import YearsSpider
@@ -118,28 +118,29 @@ def post_crawl_processing(args, config, all_download_metadata, archive_location)
         divert_api_key = config["credentials"]["divert_deepseek_api_key"]
         divert_url = config["credentials"]["divert_url_deep_seek"]
         
-        # TODO : we can achive this using only a dictionary (no need of bot list and dic)
         # Classification process of the pdfs'
         classified_metadata, classified_metadata_dic = prepare_classified_metadata(llm_ready_texts, divert_api_key, divert_url)
+        print(f"{'-' * 80}")
        
         # BUG : data is not relaiable, issue when saving, rewrite the whole file again in the next run   
         # Saving the classified metadata of the pdfs'
         save_classified_doc_metadata(classified_metadata, archive_location, args.year)
         
-        # Processing metadata to upload to the database
-        prepared_metadata_to_store = prepare_metadata_for_db(all_download_metadata, classified_metadata_dic, config)
+      
+        # Processing metadata to save
+        prepare_metadata_for_storing(all_download_metadata, classified_metadata_dic, config)
         
         # Establish db connection and upload process        
-        uri = config["db_credentials"]["mongo_db_uri"]
+        # uri = config["db_credentials"]["mongo_db_uri"]
         
-        client = connect_to_db(uri)
+        # client = connect_to_db(uri)
         
-        # TODO : update the schema of the backend for CRUD
-        if client:
-            db = client["doc_db"]
-            insert_docs_by_year(db, prepared_metadata_to_store, args.year)
-        else:
-            print("❌ Failed uploading to the mongodb")
+        # # TODO : update the schema of the backend for CRUD
+        # if client:
+        #     db = client["doc_db"]
+        #     insert_docs_by_year(db, prepared_metadata_to_store, args.year)
+        # else:
+        #     print("❌ Failed uploading to the mongodb")
             
     except Exception as e:
         print(f"Error during post-processing: {e}")

@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+from traceback import print_tb
 
 def create_folder_structure(archive_location, filtered_doc_metadata):
     
@@ -57,11 +58,13 @@ def create_folder_structure(archive_location, filtered_doc_metadata):
         # If unavailable, save metadata to unavailable.txt
         if availability != "Available" or url == "N/A":
             unavailable_path = folder_path / "unavailable.txt"
-            with open(unavailable_path, "w", encoding="utf-8") as f:
-                json.dump(doc, f, ensure_ascii=False, indent=2)
-            print(f"📄 Unavailable file created: {unavailable_path}")
+            if unavailable_path.exists():
+                print(f"⚠️  Unavailable.txt already exists: {unavailable_path}, skipping creating again")
+            else:
+                with open(unavailable_path, "w", encoding="utf-8") as f:
+                    json.dump(doc, f, ensure_ascii=False, indent=2)
+                print(f"📄 Unavailable file created: {unavailable_path}")
             continue
- 
     
     return all_download_metadata
 
