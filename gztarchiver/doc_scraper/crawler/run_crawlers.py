@@ -9,7 +9,8 @@ from googleapiclient.discovery import build
 import json
 from pathlib import Path
 from datetime import datetime
-
+import shutil
+import os
 
 @defer.inlineCallbacks
 def run_crawlers_sequentially(args, config, user_input_kind):
@@ -141,6 +142,15 @@ def post_crawl_processing(args, config, all_download_metadata, archive_location)
         #     insert_docs_by_year(db, prepared_metadata_to_store, args.year)
         # else:
         #     print("❌ Failed uploading to the mongodb")
-            
+        
+        # clear the temp metadata dir used by the program
+        temp_metadata_dir_path = "meta_data"
+        
+        if os.path.exists(temp_metadata_dir_path) and os.path.isdir(temp_metadata_dir_path):
+            shutil.rmtree(temp_metadata_dir_path)
+            print("Cleared the temp metadata directory")
+        else:
+            print("Temp metadata directory not exists")
+        
     except Exception as e:
         print(f"Error during post-processing: {e}")
