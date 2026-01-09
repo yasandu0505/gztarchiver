@@ -51,6 +51,7 @@ def save_metadata_to_filesystem(all_download_metadata, classified_metadata_dic, 
     ARCHIVE_BASE_URL = config["archive"]["archive_base_url"]
     FORCE_DOWNLOAD_BASE_URL = config["archive"]["force_download_base_url"]
     
+    
     for doc in all_download_metadata:
         doc_id = doc['doc_id']
         
@@ -81,13 +82,13 @@ def save_metadata_to_filesystem(all_download_metadata, classified_metadata_dic, 
         
         document_metadata_object_path = parent_folder_of_document / f"{str(doc_id)}_metadata.json"
         
-        if document_metadata_object_path.exists():
-            continue
-        else:
-            with open(document_metadata_object_path, "w") as f:
-                json.dump(document_object, f, indent=2)
+        # if document_metadata_object_path.exists():
+        #     continue
+        
+        with open(document_metadata_object_path, "w") as f:
+            json.dump(document_object, f, indent=2)
             
-            print(f"Document metadata saved at : {document_metadata_object_path}")
+        print(f"Document metadata saved at : {document_metadata_object_path}")
                     
         merged_output.append(document_object)
         

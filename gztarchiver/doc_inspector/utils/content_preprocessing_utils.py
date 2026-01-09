@@ -65,13 +65,14 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_siz
     print(f"{'=' * 80}")
     print("STARTING TEXT EXTRACTING PROCESS")
     print(f"{'=' * 80}")
-
     for doc_info in all_download_metadata:
         doc_id = doc_info['doc_id']
         doc_date = doc_info['date']
         file_name = doc_info['file_name']
         availability = doc_info['availability']
         local_path = Path(doc_info['file_path'])
+        download_url = doc_info["download_url"]
+        description = doc_info["des"]
         
         if availability == 'Unavailable' or file_name == 'unavailable.json':
             # extracted_texts[doc_id] = {
@@ -96,7 +97,11 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_siz
                 "status": "error",
                 "date": doc_date,
                 "text": "",
-                "error": "File not found"
+                "error": "File not found",
+                "file_path": local_path,
+                "availability": availability,
+                "download_url": download_url,
+                "des": description
             }
             continue
 
@@ -107,7 +112,11 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_siz
                 "status": "skipped",
                 "date": doc_date,
                 "text": "",
-                "error": "Not a PDF file"
+                "error": "Not a PDF file",
+                "file_path": local_path,
+                "availability": availability,
+                "download_url": download_url,
+                "des": description
             }
             continue
 
@@ -150,7 +159,11 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_siz
                         "error": None,
                         "total_page_count": total_pages,
                         "extracted_page_count": pages_to_extract,
-                        "char_count": len(cleaned_text)
+                        "char_count": len(cleaned_text),
+                        "file_path": local_path,
+                        "availability": availability,
+                        "download_url": download_url,
+                        "des": description
                     }
                     
                     print(f"  - Character count: {len(cleaned_text)}")
@@ -166,7 +179,11 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_siz
                         "text": "",
                         "error": "No readable content after cleaning",
                         "total_page_count": total_pages,
-                        "extracted_page_count": pages_to_extract
+                        "extracted_page_count": pages_to_extract,
+                        "file_path": local_path,
+                        "availability": availability,
+                        "download_url": download_url,
+                        "des": description
                     }
 
             else:
@@ -178,7 +195,11 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_siz
                     "text": "",
                     "error": "No text content found",
                     "total_page_count": total_pages,
-                    "extracted_page_count": pages_to_extract
+                    "extracted_page_count": pages_to_extract,
+                    "file_path": local_path,
+                    "availability": availability,
+                    "download_url": download_url,
+                    "des": description
                 }
 
         except Exception as e:
@@ -188,7 +209,11 @@ def extract_text_from_pdf(all_download_metadata: List[Dict[str, Any]], chunk_siz
                 "status": "error",
                 "date": doc_date,
                 "text": "",
-                "error": str(e)
+                "error": str(e),
+                "file_path": local_path,
+                "availability": availability,
+                "download_url": download_url,
+                "des": description
             }
 
     # Summary
@@ -237,7 +262,11 @@ def prepare_for_llm_processing(extracted_texts: Dict[str, Dict]) -> Dict[str, st
         if doc_data["status"] == "success" and doc_data["text"]:
             llm_ready_texts[doc_id] = {
                 "text": doc_data["text"],
-                "date": doc_data["date"]
+                "date": doc_data["date"],
+                "file_path": doc_data["file_path"],
+                "availability": doc_data["availability"],
+                "download_url": doc_data["download_url"],
+                "des": doc_data["des"]
                 }
             print(f" - {doc_id}: Ready    ✅")
         else:

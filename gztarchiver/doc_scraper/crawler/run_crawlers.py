@@ -4,7 +4,7 @@ from twisted.internet import reactor, defer
 from gztarchiver.document_scraper.document_scraper import YearsSpider
 from gztarchiver.document_scraper.document_scraper.spiders import DocMetadataSpider
 from gztarchiver.document_scraper.document_scraper.spiders import PDFDownloaderSpider
-from gztarchiver.doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, save_classified_doc_metadata, prepare_classified_metadata
+from gztarchiver.doc_inspector.utils import extract_text_from_pdf, prepare_for_llm_processing, save_classified_doc_metadata, prepare_classified_metadata, process_failed_documents
 from googleapiclient.discovery import build
 import json
 from pathlib import Path
@@ -110,8 +110,13 @@ def run_crawlers_sequentially(args, config, user_input_kind):
 def post_crawl_processing(args, config, all_download_metadata, archive_location):
     """Handle post-crawl processing (Data preprocessing, etc.)"""
     try:
-        # Extract data from the pdf files      
-        extracted_texts = extract_text_from_pdf(all_download_metadata)
+     
+        # check for the existing classified metdata logs
+        results = process_failed_documents(archive_location, args.year)
+        
+        total_documents_to_process = all_download_metadata + results
+        # Extract data from the pdf files    
+        extracted_texts = extract_text_from_pdf(total_documents_to_process)
         
         # Preprocess the extracted data to be used on LLM
         llm_ready_texts = prepare_for_llm_processing(extracted_texts)
@@ -125,11 +130,13 @@ def post_crawl_processing(args, config, all_download_metadata, archive_location)
        
         # TODO : data is not relaiable, issue when saving, rewrite the whole file again in the next run   
         # Saving the classified metadata of the pdfs'
+
+        
         save_classified_doc_metadata(classified_metadata, archive_location, args.year)
         
       
         # Processing metadata to save
-        save_metadata_to_filesystem(all_download_metadata, classified_metadata_dic, config)
+        save_metadata_to_filesystem(total_documents_to_process, classified_metadata_dic, config)
         
         # Establish db connection and upload process        
         # uri = config["db_credentials"]["mongo_db_uri"]
