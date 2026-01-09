@@ -100,17 +100,15 @@ class PDFDownloaderSpider(scrapy.Spider):
             self.save_updated_metadata()
         
         # Process unavailable items separately
-        # if unavailable_items:
-        #     self.logger.info(f"⚠️ Processing {len(unavailable_items)} unavailable documents:")
-        #     print(f"⚠️ Processing {len(unavailable_items)} unavailable documents:")
-        #     for item in unavailable_items:
-        #         # Create folder structure
-        #         folder_path = item["file_path"].parent
-        #         folder_path.mkdir(parents=True, exist_ok=True)
-        #         # Log to unavailable.csv
-        #         self.log_status(item, "unavailable_logs")
-        #         self.logger.info(f"⚠️ Unavailable: {item['doc_id']}")
-        #         print(f"⚠️ Unavailable: {item['doc_id']}")
+        if unavailable_items:
+            self.logger.info(f"⚠️ Processing {len(unavailable_items)} unavailable documents:")
+            for item in unavailable_items:
+                # Create folder structure
+                folder_path = item["file_path"].parent
+                folder_path.mkdir(parents=True, exist_ok=True)
+                # Log to unavailable.csv
+                self.log_status(item, "unavailable_logs")
+                self.logger.info(f"⚠️ Unavailable: {item['doc_id']}")
         
         self.logger.info(f"📊 Data check summary:")
         self.logger.info(f"   - Total documents: {len(self.download_metadata)}")
