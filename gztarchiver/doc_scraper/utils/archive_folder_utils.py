@@ -1,6 +1,5 @@
 from pathlib import Path
 import json
-from traceback import print_tb
 
 def create_folder_structure(archive_location, filtered_doc_metadata):
     

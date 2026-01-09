@@ -45,7 +45,7 @@ def insert_docs_by_year(db, prepared_metadata_to_store, year):
     
     return
 
-def prepare_metadata_for_storing(all_download_metadata, classified_metadata_dic, config):
+def save_metadata_to_filesystem(all_download_metadata, classified_metadata_dic, config):
     merged_output = []
     
     ARCHIVE_BASE_URL = config["archive"]["archive_base_url"]
@@ -91,5 +91,5 @@ def prepare_metadata_for_storing(all_download_metadata, classified_metadata_dic,
                     
         merged_output.append(document_object)
         
-    return merged_output
+    return 
 

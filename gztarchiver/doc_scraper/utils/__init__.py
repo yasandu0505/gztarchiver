@@ -2,7 +2,7 @@ from .year_data_utils import load_years_metadata, get_year_link
 from .hide_logs_utils import hide_logs
 from .doc_metadata_utils import filter_doc_metadata, load_doc_metadata_file
 from .archive_folder_utils import create_folder_structure
-from .db_utils import prepare_metadata_for_storing, connect_to_db, insert_docs_by_year
+from .db_utils import save_metadata_to_filesystem, connect_to_db, insert_docs_by_year
 
 __all__ = [
     "scrape_years_metadata",
@@ -14,7 +14,7 @@ __all__ = [
     "create_folder_structure",
     "filter_pdf_only",
     "save_upload_results",
-    "prepare_metadata_for_storing",
+    "save_metadata_to_filesystem",
     "connect_to_db",
     "insert_docs_by_year",
 ]

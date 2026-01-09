@@ -1,4 +1,4 @@
-from gztarchiver.doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure, prepare_metadata_for_storing
+from gztarchiver.doc_scraper.utils import load_years_metadata, get_year_link, hide_logs, load_doc_metadata_file, filter_doc_metadata, create_folder_structure, save_metadata_to_filesystem
 from scrapy.crawler import CrawlerRunner
 from twisted.internet import reactor, defer
 from gztarchiver.document_scraper.document_scraper import YearsSpider
@@ -129,7 +129,7 @@ def post_crawl_processing(args, config, all_download_metadata, archive_location)
         
       
         # Processing metadata to save
-        prepare_metadata_for_storing(all_download_metadata, classified_metadata_dic, config)
+        save_metadata_to_filesystem(all_download_metadata, classified_metadata_dic, config)
         
         # Establish db connection and upload process        
         # uri = config["db_credentials"]["mongo_db_uri"]
@@ -144,8 +144,8 @@ def post_crawl_processing(args, config, all_download_metadata, archive_location)
         #     print("❌ Failed uploading to the mongodb")
         
         # clear the temp metadata dir used by the program
-        temp_metadata_dir_path = "meta_data"
-        
+        temp_metadata_dir_path = config["output"]["metadata_dir"]
+               
         if os.path.exists(temp_metadata_dir_path) and os.path.isdir(temp_metadata_dir_path):
             shutil.rmtree(temp_metadata_dir_path)
             print("Cleared the temp metadata directory")
