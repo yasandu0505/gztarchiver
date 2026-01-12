@@ -82,9 +82,6 @@ def save_metadata_to_filesystem(all_download_metadata, classified_metadata_dic, 
         
         document_metadata_object_path = parent_folder_of_document / f"{str(doc_id)}_metadata.json"
         
-        # if document_metadata_object_path.exists():
-        #     continue
-        
         with open(document_metadata_object_path, "w") as f:
             json.dump(document_object, f, indent=2)
             

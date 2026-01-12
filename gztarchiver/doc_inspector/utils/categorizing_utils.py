@@ -24,8 +24,7 @@ def classify_gazette(content, doc_id, divert_api_key, divert_url):
 
     headers = {
         "Content-Type": "application/json",
-        "Test-Key": f"{divert_api_key}",
-        "User-Agent": "curl/8.7.1"
+        "Authorization": f"Bearer {divert_api_key}"
     }
     
     payload = {
